@@ -1,0 +1,206 @@
+# dev configuration for order-service module
+server:
+  port: 8089
+  servlet:
+    contextPath: /api/order-service
+  error:
+    include-message: always
+    include-binding-error: always
+
+# Netflix Eureka Server configurations for service discovery
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true # By default, this is true
+    fetch-registry: true
+    healthcheck:
+      enabled: true
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      myCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 5 # slidingWindowSize: Determines how many calls are monitored to calculate the failure rate.
+        minimumNumberOfCalls: 3
+        permittedNumberOfCallsInHalfOpenState: 2
+        waitDurationInOpenState: 2s
+      inventoryCircuitBreaker:
+        registerHealthIndicator: true
+        #if the count window size is 10 and failure threshold is %50, when circuit breaker detect 5 failure out of last 10 calls,
+        #it changes from CLOSED to OPEN.
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5 # slidingWindowSize: Determines how many calls are monitored to calculate the failure rate.
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 3 # at least 3 calls must be recorded, before the failure rate can be calculated and state switch from closed to open.
+        permittedNumberOfCallsInHalfOpenState: 2
+        waitDurationInOpenState: 2s
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+  #timeout properties - maximum time that a particular operation is allowed to execute
+  timelimiter:
+    configs:
+      values:
+        timeout-duration: 4s
+    instances:
+      inventoryTimeLimiter: # Unique name for TimeLimiter
+        base-config: values
+  #retry properties
+  retry:
+    configs:
+      inventoryRetry:
+        max-attempts: 3
+        wait-duration: 2s
+
+spring:
+  application:
+    name: order-service
+  config:
+    import: configserver:http://localhost:8888/configuration-service
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.SecurityAutoConfiguration
+  kafka:
+    bootstrap-servers: localhost:9092
+    registry:
+      url: http://192.168.0.143:9021
+    producer:
+      acks: all
+      properties:
+        enable:
+          idempotence: true
+      transaction-id-prefix: tx-
+
+  # First start MYSQL DB instance on your local server - located at windows/system services
+  datasource:
+    url: jdbc:mysql://localhost:3306/sumandb
+    username: root
+    password: root
+    driverClassName: com.mysql.jdbc.Driver
+    defaultSchema:
+    maxPoolSize: 20
+    hibernate:
+      generate_statistics: true
+      hbm2ddl.method: update
+      show_sql: true
+      format_sql: true
+      dialect: org.hibernate.dialect.MySQLDialect
+  jpa:
+    #open-in-view: true
+    generate-ddl: true
+
+# Spring Boot Actuator configurations
+management:
+  health:
+    jms:
+      enabled: false
+  server:
+    port: 9002
+    address: 127.0.0.1
+  info:
+    java:
+      enabled: true
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+        #include: health, info
+      circuitbreakers:
+        enabled: true
+    endpoint:
+      metrics:
+        enabled: true
+        jvm:
+          enabled: true
+        web:
+          server:
+            requests: true
+      health:
+        show-details: always
+  metrics:
+    enable:
+      process:
+        files: true
+    web:
+      server:
+        requests: true
+keycloak:
+  client-id: payment-service-client
+  client-secret: S9cMGkVZovBySU1aKtfcIvrgWMTcy71S
+  get-token-url: http://localhost:8080/realms/payment-realm/protocol/openid-connect/token
+
+redis:
+  config:
+    cache:
+      host: localhost
+      port: 6379
+      password: redis-password
+
+# start activemq broker from command prompt - C:\apache-activemq-6.0.1\bin>activemq start
+# we can access the AvtiveMQ console using http://localhost:8161
+activemq:
+  broker-url: tcp://localhost:61616?jms.redeliveryPolicy.maximumRedeliveries=1
+  user: admin
+  password: admin
+  packages:
+    trust-all: true
+
+order:
+  queue: order-queue
+
+# first run kafka kraft docker container (image) using docker composer file - KRaft-single-broker.yml
+#command - docker compose -f KRaft-single-broker.yml up
+# Kafka ui - http://localhost:9999/
+kafka:
+  topics:
+    order: ORDER-CREATED-TOPIC
+    partitions: 3
+    replication:
+      factor: 1
+
+logging:
+  level:
+    com:
+      atis:
+        api: DEBUG
+    org:
+      hibernate:
+        stat: DEBUG
+        SQL: DEBUG
+        type: DEBUG
+
+inventory:
+  service:
+    url: http://localhost:8087/api/inventory-service
+
+auth:
+  sslcert-truststore: classpath:truststore.jks
+
+payment:
+  queue: payment-queue
+  ssl:
+    trust-store: classpath:truststore.payment.dev.jks
+    trust-store-password: Passw0rd1
+  service:
+    connection-timeout: 1000
+    url: https://localhost:8088/payment-service/api/payment
+    url-insight-status: https://localhost:8088/payment-service/api/payment/status
+    auth:
+      url: https://localhost:8071/api/auth
+      client-id:
+      client-secret: test
+    #  jks: classpath:keystore.jks
+    #jks: ${PAYMENT_SERVER_KEYSTORE}
+    #  jks-password: Password1
+    #  http-client:
+    #    proxy:
+    #      server:
+    #        port: 8080
+
+    #client:
+    #  jks: classpath:truststore.jks
+    #jks: ${PAYMENT_CLIENT_TRUSTSTORE}
+    #  jks-password: Password1
