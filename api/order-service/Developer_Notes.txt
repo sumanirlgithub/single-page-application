@@ -1,3 +1,4 @@
+GIT HUB remote repository - https://github.com/sumanirlgithub/single-page-application
 maven VM option
 -Dspring.profiles.active=dev -Djavax.net.ssl.trustStore=C:/projects/ssl_certificate/truststore.payment.dev.jks
 
@@ -10,7 +11,7 @@ Tables: PUR_ORDER, ORDER_ITEM
 REST Endpoint:
 GET with Query Params: http://localhost:8089/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001
 
-#ToDo Idempotency-Key should be sent in the HTTP request header, so backend api can check the Idempotency-Key and do not process duplicate oirder
+#ToDo Idempotency-Key should be sent in the HTTP request header, so backend api can check the Idempotency-Key and do not process duplicate order
 POST: http://localhost:8089/api/order-service/orders
 
 # Start configuration-service application
