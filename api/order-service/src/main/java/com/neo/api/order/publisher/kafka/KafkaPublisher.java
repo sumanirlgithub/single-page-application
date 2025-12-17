@@ -1,5 +1,6 @@
 package com.neo.api.order.publisher.kafka;
 
+import com.neo.api.common.avro.model.generated.OrderEventName;
 import com.neo.api.order.entity.OutboundEvent;
 import com.neo.api.order.repository.OutboundEventJpaRepository;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.concurrent.ListenableFuture;
 import com.neo.api.common.order.event.OrderEvent;
 import com.neo.api.common.avro.model.generated.OrderAvroEvent;
+import com.neo.api.common.avro.model.generated.OrderEventBody;
 import com.neo.api.order.config.KafkaTopicConfig;
 import com.neo.api.order.exception.KafkaPublishException;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,9 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -136,25 +141,6 @@ public class KafkaPublisher {
         });
     }
 
-    public String createAndSendOrderAvroEvent(OrderAvroEvent orderEvent) {
-		final String key = (String) orderEvent.getBody().getId();
-		CompletableFuture<SendResult<String, Object>> future =
-				kafkaTemplate.send(kafkaTopicConfig.topic().name(), key, orderEvent);
-		future.whenComplete((result, ex) -> {
-			if (ex != null) {
-                //onFailure(ex) is called if the send failed (broker down, network, etc.)
-				onFailure(ex);
-				throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "send event fail.");
-			} else {
-                //onSuccess(result) is called only after ack - Kafka broker acknowledges the message
-				onSuccess(result);
-			}
-		});
-		// Optionally, wait for the result synchronously
-		future.join();
-		return key;
-	}
-
     public void sendMessage(String message)	{
         CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.
                 send(kafkaTopicConfig.topic().name(), message);
@@ -189,4 +175,74 @@ public class KafkaPublisher {
 	private void onFailure(final Throwable t) {
 		log.info("Unable to write Order to topic {}.", ORDER_TOPIC, t);
 	}
+
+    //@Scheduled(fixedDelayString = "${outbound.publish.delay:5000}") // 5 seconds interval
+    @Transactional
+    public void publishEventsUsingAvroSchema() {
+        OrderEventBody body = OrderEventBody.newBuilder()
+                .setId("101")
+                .setUserId("test-user")
+                .setOrderEventName(OrderEventName.CREATED)
+                .setDate(LocalDateTime.now().toEpochSecond(ZoneOffset.UTC))
+                .build();
+
+        OrderAvroEvent orderAvroEvent = OrderAvroEvent.newBuilder()
+                .setBody(body)
+                .build();
+        List<OrderAvroEvent> events = Arrays.asList(orderAvroEvent);
+
+        for (OrderAvroEvent event : events) {
+            //kafkaTemplate.send(event.getTopic(), event.getPayload()).get(); // wait for ack
+            CompletableFuture<SendResult<String, Object>> result = sendEventAsyncUsingAvro(event.getHeader().getId(), event.getBody().toString());
+            log.info("Order event successfully published to Kafka topic");
+            //event.setSent(true);
+        }
+    }
+
+    public CompletableFuture<SendResult<String, Object>> sendEventAsyncUsingAvro(CharSequence eventId, String orderEvent) {
+        final String key = String.valueOf(eventId);
+
+        // Modern KafkaTemplate.send() returns CompletableFuture directly
+        CompletableFuture<SendResult<String, Object>> future =
+                kafkaTemplate.send(kafkaTopicConfig.topic().name(), key, orderEvent);
+
+        // Attach guaranteed logging for exceptions at CompletableFuture level
+        return future.handle((result, ex) -> {
+            if (ex != null) {
+                Throwable cause = ex instanceof CompletionException ? ex.getCause() : ex;
+                if (cause instanceof KafkaException && cause.getCause() != null) {
+                    cause = cause.getCause(); // unwrap KafkaException
+                }
+                //onFailure(ex) is called if the send failed (broker down, network, etc.)
+                onFailure(cause);
+                log.error("Error occurred: unable to write an event to KAFKA failed (CompletableFuture): key={}, topic={}",
+                        key, kafkaTopicConfig.topic().name(), cause);
+                throw new CompletionException(cause);
+            } else {
+                //onSuccess(result) is called only after ack - Kafka broker acknowledges the message
+                onSuccess(result);
+                return result;
+            }
+        });
+    }
+
+    public String createAndSendOrderAvroEvent(OrderAvroEvent orderEvent) {
+        final String key = (String) orderEvent.getBody().getId();
+        CompletableFuture<SendResult<String, Object>> future =
+                kafkaTemplate.send(kafkaTopicConfig.topic().name(), key, orderEvent);
+        future.whenComplete((result, ex) -> {
+            if (ex != null) {
+                //onFailure(ex) is called if the send failed (broker down, network, etc.)
+                onFailure(ex);
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "send event fail.");
+            } else {
+                //onSuccess(result) is called only after ack - Kafka broker acknowledges the message
+                onSuccess(result);
+            }
+        });
+        // Optionally, wait for the result synchronously
+        future.join();
+        return key;
+    }
+
 }

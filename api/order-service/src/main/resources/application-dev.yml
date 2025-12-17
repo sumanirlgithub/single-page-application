@@ -52,6 +52,16 @@ resilience4j:
         max-attempts: 3
         wait-duration: 2s
 
+# first run kafka kraft docker container (image) using docker composer file - KRaft-single-broker.yml
+#command - docker compose -f KRaft-single-broker.yml up
+# Kafka ui - http://localhost:9999/
+kafka:
+  topics:
+    order: ORDER-CREATED-TOPIC
+    partitions: 3
+    replication:
+      factor: 3
+
 spring:
   application:
     name: order-service
@@ -150,16 +160,6 @@ activemq:
 
 order:
   queue: order-queue
-
-# first run kafka kraft docker container (image) using docker composer file - KRaft-single-broker.yml
-#command - docker compose -f KRaft-single-broker.yml up
-# Kafka ui - http://localhost:9999/
-kafka:
-  topics:
-    order: ORDER-CREATED-TOPIC
-    partitions: 3
-    replication:
-      factor: 1
 
 logging:
   level:

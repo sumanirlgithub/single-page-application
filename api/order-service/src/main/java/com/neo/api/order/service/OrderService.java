@@ -111,7 +111,7 @@ public class OrderService {
 
         //Step-4 Save order event into Outbound_Event table
         OrderEvent orderEvent = new OrderEvent(UUID.randomUUID(), OrderEventName.ORDER_CREATED, order.getOrderId(),
-                100.00, orderRequest.getItems().get(0).getItemCode(), orderRequest.getItems().get(0).getQuantity(), Instant.now());
+                order.getTotalValue().doubleValue(), Instant.now());
         OutboundEvent outboundEvent = new OutboundEvent();
         outboundEvent.setTopic("ORDER-CREATED-TOPIC");
         outboundEvent.setPayload(jsonUtil.toJson(orderEvent));
@@ -168,6 +168,7 @@ public class OrderService {
         PurchaseOrder purchaseOrder = new PurchaseOrder();
         List<OrderItem> orderItems = new ArrayList<>();
         purchaseOrder.setOrderDetails(orderRequest.getOrderDetails());
+        purchaseOrder.setTotalValue(orderRequest.getAmount());
         orderRequest.getItems().forEach(orderReqItem -> {
             OrderItem orderItem = new OrderItem();
             orderItem.setItemName(orderReqItem.getItemName());

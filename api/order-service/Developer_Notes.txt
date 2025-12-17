@@ -10,11 +10,14 @@ Tables: PUR_ORDER, ORDER_ITEM
 REST Endpoint:
 GET with Query Params: http://localhost:8089/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001
 
+#ToDo Idempotency-Key should be sent in the HTTP request header, so backend api can check the Idempotency-Key and do not process duplicate oirder
 POST: http://localhost:8089/api/order-service/orders
+
 # Start configuration-service application
 
-# Start inventory-service as order-service make a call to inventory-service
+# Run eureka-service-registry (service)
 
+# Start inventory-service as order-service make a call to inventory-service
 
 Notes: If KAFKA broker is not ready, then an order will not be created and application will throw a runtime unchecked exceptions.
 Kafka Producer Listener can be registered to log the failure messages.
@@ -27,8 +30,6 @@ docker compose up
 
 # Run kafka-ui container to see the incoming messages into the topics
 URL to access kafka-ui - http://localhost:9999/
-
-Run eureka-service-registry (service)
 
 Run Redis server locally from PowerShell using docker -
 docker run --name redis -p 6379:6379 redis
