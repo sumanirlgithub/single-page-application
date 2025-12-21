@@ -1,0 +1,87 @@
+{
+  "type": "record",
+  "name": "OrderAvroEvent",
+  "namespace": "com.neo.api.common.avro.model.generated",
+  "doc": "Order event",
+  "fields": [
+    {
+      "name": "header",
+      "type": [
+        "null",
+        {
+          "type": "record",
+          "name": "OrderEventHeader",
+          "doc": "Default information",
+          "fields": [
+            {
+              "name": "id",
+              "type": {
+                "type": "string",
+                "avro.java.string": "String"
+              },
+              "doc": "GUID (UUID) of the event making it globally identifiable"
+            },
+            {
+              "name": "sourceSystem",
+              "type": {
+                "type": "string",
+                "avro.java.string": "String"
+              },
+              "doc": "Source system which created the event"
+            },
+            {
+              "name": "createdAt",
+              "type": "long",
+              "doc": "Event timestamp creation in epoch format"
+            }
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "body",
+      "type": {
+        "type": "record",
+        "name": "OrderEventBody",
+        "doc": "Body information of the event",
+        "fields": [
+          {
+            "name": "id",
+            "type": {
+              "type": "string",
+              "avro.java.string": "String"
+            },
+            "doc": "order id the order"
+          },
+          {
+            "name": "userId",
+            "type": {
+              "type": "string",
+              "avro.java.string": "String"
+            },
+            "doc": "UUID of the user that initiated the transaction"
+          },
+          {
+            "name": "orderEventName",
+            "type": {
+              "type": "enum",
+              "name": "OrderEventName",
+              "symbols": [
+                "CREATED",
+                "COMPLETED"
+              ]
+            },
+            "doc": "Order event name. Future values might be added"
+          },
+          {
+            "name": "date",
+            "type": "long",
+            "doc": "The timestamp when the transaction event was generated"
+          }
+        ]
+      },
+      "doc": "body of transaction event"
+    }
+  ]
+}
