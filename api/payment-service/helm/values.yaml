@@ -1,0 +1,46 @@
+# This file contains values which are not environment specific
+appName: payment
+paymentContextPath: /shared-services/api/payment
+paymentServerPort: '8443'
+
+image:
+  name: docker-icg-dev-local.artifactrepository.citigroup.net/icg-msst-shared-services-179/payment
+  #name: docker-icg-prod-local.artifactrepository.citigroup.net/icg-msst-shared-services-179/payment
+
+dockerNamespace: icg-msst-shared-services-179
+#dockerRegistry: docker-icg-prod.artifactrepository.citigroup.net
+dockerRegistry: docker-icg-dev-local.artifactrepository.citigroup.net
+imageName: payment
+
+healthCheckEndpoint: /shared-services/api/payment/actuator/health
+
+livenessProbFailureThreshold: '5'
+livenessProbInitialDelaySeconds: '600'
+livenessProbPeriodSeconds: '60'
+livenessProbSuccessThreshold: '1'
+livenessProbTimeoutSeconds: '5'
+
+cpuLimit: '400m'
+cpuRequest: '100m'
+memoryLimit: '2Gi'
+memoryRequest: '1Gi'
+
+targetCpuUtilizationPercentage: '85'
+
+readinessProbFailureThreshold: '20'
+readinessProbInitialDelaySeconds: '180'
+readinessProbPeriodSeconds: '30'
+readinessProbSuccessThreshold: '1'
+readinessProbTimeoutSeconds: '5'
+
+citiConnectPaymentClientId: "suman007"
+citiConnectPaymentClientSecret: "secret007"
+
+citiConnectServerKeystore: /etc/ssl/certs/payment/auth/jks/keystore.jks
+citiConnectClientTruststore: /etc/ssl/certs/payment/auth/jks/truststore.jks
+
+#citiConnectServerKeystore: /etc/ssl/certs/payment/auth/keystore.jks
+#citiConnectClientTruststore: /etc/ssl/certs/payment/auth/truststore.jks
+
+ssl_KEYSTORE_SECRET: /etc/ssl/certs/payment/key-store
+ssl_TRUSTSTORE_SECRET: /etc/ssl/certs/payment/trust-store

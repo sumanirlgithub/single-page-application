@@ -1,0 +1,110 @@
+apiVersion: apps.openshift.io/v1
+kind: Deployment
+metadata:
+  name: payment
+  labels:
+    app: payment
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: payment
+  strategy:
+#    activeDeadlineSeconds: 21600
+#    resources: {}
+    type: RollingUpdate
+    rollingParams:
+      maxSurge: 25%
+      maxUnavailable: 25%
+      timeoutSeconds: 600
+      updatePeriodSeconds: 1
+  template:
+    metadata:
+      annotations:
+        ecs.o2c/enable: {{ .Values.appName }}
+      labels:
+        app: {{ .Values.appName }}
+    spec:
+      containers:
+        - env:
+            - name: JAVA_VM_OPTS
+              value: "-Dspring.profiles.active={{ .Values.envName }}"
+            - name: PAYMENT_SPRING_DATASOURCE_URL
+              value: {{ .Values.databaseUrl }}
+            - name: PAYMENT_SPRING_DATASOURCE_USERNAME
+              value: {{ .Values.databaseUsername }}
+            - name: PAYMENT_SPRING_DATASOURCE_SCHEMA
+              value: {{ .Values.databaseSchema }}
+            - name: SHARED_SERVICES_DB_CONNECTION_POOL_MAX_POOL_SIZE
+              value: {{ .Values.databaseMaxPoolSize }}
+            - name: SHARED_SERVICES_DB_CONNECTION_POOL_MIN_IDLE_CONNECTION
+              value: {{ .Values.databaseMinimumIdle }}
+            - name: SHARED_SERVICES_DB_CONNECTION_POOL_IDLE_CONNECTION_TIMEOUT_MS
+              value: {{ .Values.databaseIdleTimeout }}
+            - name: PAYMENT_CONTEXT_PATH
+              value: {{ .Values.paymentContextPath }}
+            - name: PAYMENT_SERVER_PORT
+              value: {{ .Values.paymentServerPort }}
+            - name: ENVIRONMENT
+              value: {{ .Values.envName }}
+            - name: CITICONNECT_PAYMENT_URL
+              value: {{ .Values.citiConnectPaymentUrl }}
+            - name: CITICONNECT_PAYMENT_CLIENT_ID
+              value: {{ .Values.citiConnectPaymentClientId }}
+            - name: CITICONNECT_PAYMENT_CLIENT_SECRET
+              value: {{ .Values.citiConnectPaymentClientSecret }}
+            - name: PAYMENT_SERVER_KEYSTORE
+              value: {{ .Values.citiConnectServerKeystore }}
+            - name: PAYMENT_CLIENT_TRUSTSTORE
+              value: {{ .Values.citiConnectClientTruststore }}
+            - name: SSL_KEYSTORE_SECRET
+              value: {{ .Values.ssl_KEYSTORE_SECRET }}
+            - name: SSL_TRUSTSTORE_SECRET
+              value: {{ .Values.ssl_TRUSTSTORE_SECRET }}
+          image: "{{ .Values.dockerRegistry }}/{{ .Values.dockerNamespace }}/{{ .Values.appName }}:{{ .chart.AppVersion }}"
+          imagePullPolicy: IfNotPresent
+          livenessProb:
+            failureThreshold: 10
+            httpGet:
+              path: {{ .Values.healthCheckEndpoint }}
+              port: {{ .Values.paymentServerPort }}
+              scheme: HTTP
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 5
+            initialDelaySeconds: 600
+          readinessProb:
+            failureThreshold: 10
+            httpGet:
+              path: {{ .Values.healthCheckEndpoint }}
+              port: {{ .Values.paymentServerPort }}
+              scheme: HTTP
+            periodSeconds: 60
+            successThreshold: 1
+            timeoutSeconds: 5
+            initialDelaySeconds: 60
+          name: {{ .Values.appName }}
+          volumeMounts:
+            - mountPath: /etc/ssl/certs/payment
+              name: ssl-certs-volume
+              readOnly: true
+            - mountPath: /etc/ssl/certs/payment/auth
+              name: citi-connect-certs-config-volume
+            - mountPath: /etc/ssl/certs/payment/auth/jks
+              name: payment-citi-connect-certs-config-volume
+          ports:
+            - containerPort: {{ .Values.paymentServerPort }}
+              protocol: TCP
+      volumes:
+        - name: ssl-certs-volume
+          secret:
+            secretName: ssl-certs-secret
+        - name: citi-connect-certs-config-volume
+          configMap:
+            name: citi-connect-certs-config
+        - name: payment-citi-connect-certs-config-volume
+          configMap:
+            name: payment-citi-connect-certs-config
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

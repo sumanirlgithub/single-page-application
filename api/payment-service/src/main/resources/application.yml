@@ -1,0 +1,70 @@
+---
+server:
+  port: 8443
+  servlet:
+    contextPath: /shared-services/api/payment
+  error:
+   include-message: always
+   include-binding-error: always
+#  ssl:
+#   enabled: true
+#   key-store: classpath:keystore.jks
+#   key-store-password: changeit
+#   keyStoreType: JKS
+#   client-auth: want
+
+spring:
+  config:
+    activate:
+      on-profile: dev
+---
+spring:
+  config:
+    activate:
+      on-profile: local, default
+  datasource:
+    url: jdbc:h2:~/test
+    username: SA
+    password:
+    driverClassName: org.h2.Driver
+    defaultSchema:
+    maxPoolSize: 10
+    hibernate:
+      hbm2ddl.method: create-drop
+      show_sql: true
+      format_sql: true
+      dialect: org.hibernate.dialect.H2Dialect
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:mysql://localhost:3306/sumandb
+    username: root
+    password: root
+    driverClassName: com.mysql.jdbc.Driver
+    defaultSchema:
+    maxPoolSize: 20
+    hibernate:
+      hbm2ddl.method: update
+      show_sql: true
+      format_sql: true
+      dialect: org.hibernate.dialect.MySQLDialect
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:oracle:thin:@//localhost:1527/empdb
+    username: SU9797
+    password: COOL
+    driverClassName: oracle.jdbc.OracleDriver
+    defaultSchema:
+    maxPoolSize: 10
+    hibernate:
+      hbm2ddl.method: update
+      show_sql: true
+      format_sql: true
+      dialect: org.hibernate.dialect.H2Dialect

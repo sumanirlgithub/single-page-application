@@ -1,0 +1,16 @@
+appVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: payment
+  labels:
+    app: payment
+spec:
+  to:
+    kind: Service
+    name: payment
+  port:
+    targetPort: {{ .Values.paymentServerPort }}
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: None
+  wildcardPolicy: None

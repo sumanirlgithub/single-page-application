@@ -1,0 +1,46 @@
+-Dspring.profiles.active=dev
+
+
+Endpoint:
+https://localhost:8088/payment-service/api/payment/status
+
+# link to access the swagger page
+https://localhost:8088/payment-service/api/payment/swagger-ui.html
+
+Keycloak
+To start Keycloak server- download and run docker image-
+
+docker run -p 8080:8080 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:26.2.5 start-dev
+http://localhost:8080/
+username: admin
+password: admin
+
+*******************************************************************************************************
+
+Secure REST API with One-Way SSL:
+Create a One-Way SSL - secured web (REST) service with client authentication (X509) using Spring Boot.
+we use a keystore and a truststore when our application needs to communicate over SSL/TLS.
+Steps:
+1) Generate a private key:
+The most basic form of the genrsa command specifies the name of the output file containing the key and specifies AES256 encryption (required).
+openssl genrsa -out private-key.pem -aes256 -passout pass:Passw0rd1 2048
+
+2) Generate a CSR:
+openssl req -new -key private-key.pem -out CSR.csr
+
+3) Generate a SSL Certificate
+openssl x509 -req -days 3650 -in CSR.csr -signkey private-key.pem -out localhost-payment-service.crt
+
+4) Import the SSL Certificate into your keystore (Create Java Keystore File)
+
+OpenSSL pkcs12 -export -out keystore.p12 -inkey private-key.pem -in localhost-payment-service.crt
+
+keytool -importkeystore -destkeystore keystore.jks -srcstoretype PKCS12 -srckeystore keystore.p12
+
+5) Copy keystore.jks to /src/main/resources folder (payment - a server module)
+
+6) Accessing the Server via RestTemplate or FeignClientConfig
+
+keytool -import -file localhost-payment-service.crt -alias 1 -keystore truststore.tts.sandbox.api.citigroup.net.jks
+
+7) Copy truststore.tts.sandbox.api.citigroup.net.jks to /src/main/resources folder (order-service - a client module)

@@ -1,0 +1,40 @@
+# This is a file in which you can specify environment-specific parameters.
+# It is required by harness and your build will fail if it is not named correctly.
+# Harness looks in your repo for files in the following patterns:
+#
+# <<ENVIRONMENT_NAME>>-values.yaml
+# Where the <<ENVIRONMENT_NAME>> is the environment that you set up in Harness
+#
+# You will need one of these files for each of the environments in your manifest
+envName: dev
+replicas: 1
+
+#routeHost: apps.<<hostname>>.net
+routeHost: apps.namicggtd22d.ecs.dyn.nsroot.net
+
+dbSecret: pmtDataSecret
+
+databaseUrl: jdbc:oracle:thin:@//EMSSID.oras.dyn.nsroot.net:8889/EMSSID
+databaseUsername: PMTDATA
+databaseSchema: PMTDATA
+databaseMaximumPoolSize: 5
+databaseMinimumIdle: 3
+databaseIdleTimeout: 120000
+
+citiConnectPaymentUrl: https://tts:sandbox.citi.com/citiconnect/sb/paymentservices/v3/payment
+
+citi_connect:
+  certFilePath:
+    keystore: files/certs/keystore.jks
+    truststore: files/certs/truststore.jks
+
+# base64 format
+server:
+  ssl:
+    citiconnect:
+      payment:
+        key-store: "/u3+7QAAAA=="
+        trust-store: "/u3+7QAAAA=="
+      auth:
+        key-store: "/u3+7QAAAA=="
+        trust-store: "/u3+7QAAAA=="
