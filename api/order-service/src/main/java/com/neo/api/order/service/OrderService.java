@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -111,7 +112,7 @@ public class OrderService {
 
         //Step-4 Save order event into Outbound_Event table
         OrderEvent orderEvent = new OrderEvent(UUID.randomUUID(), OrderEventName.ORDER_CREATED, order.getOrderId(),
-                order.getTotalValue().doubleValue(), Instant.now());
+                order.getTotalValue().doubleValue(), LocalDateTime.now());
         OutboundEvent outboundEvent = new OutboundEvent();
         outboundEvent.setTopic("ORDER-CREATED-TOPIC");
         outboundEvent.setPayload(jsonUtil.toJson(orderEvent));

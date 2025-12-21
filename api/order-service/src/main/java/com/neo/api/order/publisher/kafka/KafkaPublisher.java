@@ -45,7 +45,7 @@ public class KafkaPublisher {
      * Spring boot scheduler will send order event as java object (JSON) to KAFKA ORDER-TOPIC.
      * This event will be processed by payment-service for further processing.
      */
-    @Scheduled(fixedDelayString = "${outbound.publish.delay:5000}") // 5 seconds interval
+    @Scheduled(fixedDelayString = "${outbound.publish.delay:30000}") // 30 seconds interval
     @Transactional
     public void publishEvents() {
 
