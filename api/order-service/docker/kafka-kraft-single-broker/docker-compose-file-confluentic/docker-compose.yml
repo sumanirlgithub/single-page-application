@@ -20,6 +20,7 @@ services:
       KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092'
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@broker:29093'
       KAFKA_LISTENERS: 'PLAINTEXT://broker:29092,CONTROLLER://broker:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"  # Disable auto topic creation
 
   schema-registry:
     image: confluentinc/cp-schema-registry
