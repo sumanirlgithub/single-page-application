@@ -32,7 +32,7 @@ public class TransactionConfig implements TransactionManagementConfigurer {
         return jpaTransactionManager();
     }
 
-    @Bean
+    //@Bean
     public KafkaTransactionManager<String, Object> kafkaTransactionManager(
             ProducerFactory<String, Object> producerFactory) {
         return new KafkaTransactionManager<>(producerFactory);

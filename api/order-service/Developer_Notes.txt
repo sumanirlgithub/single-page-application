@@ -27,10 +27,27 @@ Kafka Producer Listener can be registered to log the failure messages.
 # The order event will be processed by payment-service
 Start Docker Desktop (Docker Engine)
 cd C:\projects\git-repos\citi-application\api\order-service\docker\kafka-kraft-single-broker\docker-compose-file-confluentic
-docker compose up
+✅ Correct working configuration (KRaft, 2 brokers)
+Step 1: Generate a cluster ID (do this once)
+docker run --rm confluentinc/confluent-local:7.4.1 kafka-storage random-uuid
+
+docker compose down -v
+docker compose up -> creates and starts containers
+docker compose up -d -> Re-start docker container in detached (background) mode
+docker logs broker1
+
+ docker pause broker1
+ docker unpause broke
 
 # Run kafka-ui container to see the incoming messages into the topics
 URL to access kafka-ui - http://localhost:9999/
+
+# Stop Kafka broker
+docker ps
+docket stop <container_name_or_id>
+
+docker stop broker1
+docker start broker1
 
 Run Redis server locally from PowerShell using docker -
 docker run --name redis -p 6379:6379 redis

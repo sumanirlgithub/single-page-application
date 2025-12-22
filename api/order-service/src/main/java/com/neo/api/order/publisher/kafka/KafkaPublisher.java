@@ -3,17 +3,18 @@ package com.neo.api.order.publisher.kafka;
 import com.neo.api.common.avro.model.generated.OrderEventName;
 import com.neo.api.order.entity.OutboundEvent;
 import com.neo.api.order.repository.OutboundEventJpaRepository;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
-import org.springframework.kafka.support.ProducerListener;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.apache.kafka.common.errors.TimeoutException;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.springframework.kafka.core.KafkaProducerException;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.concurrent.ListenableFuture;
 import com.neo.api.common.order.event.OrderEvent;
 import com.neo.api.common.avro.model.generated.OrderAvroEvent;
 import com.neo.api.common.avro.model.generated.OrderEventBody;
 import com.neo.api.order.config.KafkaTopicConfig;
-import com.neo.api.order.exception.KafkaPublishException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -21,15 +22,18 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
+import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static com.neo.api.common.order.event.OrderEvent.ORDER_TOPIC;
 
@@ -45,19 +49,73 @@ public class KafkaPublisher {
      * Spring boot scheduler will send order event as java object (JSON) to KAFKA ORDER-TOPIC.
      * This event will be processed by payment-service for further processing.
      */
-    @Scheduled(fixedDelayString = "${outbound.publish.delay:30000}") // 30 seconds interval
+    @Scheduled(fixedDelayString = "${outbound.publish.delay:30000}")
     @Transactional
     public void publishEvents() {
-
-        List<OutboundEvent> events =
-                outboundEventJpaRepository.findTop100BySentFalseOrderByCreatedAtAsc();
+        List<OutboundEvent> events = outboundEventJpaRepository.findTop100BySentFalseOrderByCreatedAtAsc();
+        List<CompletableFuture<SendResult<String, Object>>> futures = new ArrayList<>();
 
         for (OutboundEvent event : events) {
-            //kafkaTemplate.send(event.getTopic(), event.getPayload()).get(); // wait for ack
-            CompletableFuture<SendResult<String, Object>> result = sendEventAsync(event.getId(), event.getPayload());
-            log.info("Order event successfully published to Kafka topic");
-            event.setSent(true);
+            CompletableFuture<SendResult<String, Object>> future = sendEventAsyncWithCircuitBreaker(event.getId(), event.getPayload())
+                    .thenApply(result -> {
+                        event.setSent(true);
+                        log.info("Order event successfully published to Kafka topic");
+                        return result;
+                    })
+                    .exceptionally(ex -> {
+                        log.error("Kafka publish failed for eventId={}", event.getId(), ex);
+                        return null; // fallback is already triggered via CircuitBreaker
+                    });
+
+            futures.add(future);
         }
+
+        // Optional: Wait for all to complete, without blocking scheduler excessively
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        outboundEventJpaRepository.saveAll(events); // persist updated sent status
+    }
+
+    /**
+     * Async Kafka producer method with Resilience4j CircuitBreaker
+     * Certain exceptions, like TimeoutException: Topic … not present in metadata, happen inside the producer thread before the
+     * CompletableFuture returned by KafkaTemplate.send() is completed.
+     * These exceptions are already handled by the ProducerListener (which logs them) and do not propagate to the CompletableFuture.
+     * That’s why your handle() / whenComplete() never sees them, even though the ProducerListener logs them correctly.
+     * 🔹 Key points:
+     * ProducerListener is the reliable place to guarantee logging for all send failures.
+     * CompletableFuture handle/whenComplete only sees exceptions that occur after send is accepted by the producer.
+     * Network/IO errors that occur asynchronously may propagate.
+     * Broker-side failures that happen early (like topic missing, authentication issues) are not propagated to the CompletableFuture.
+     *
+     * @param orderEvent
+     * @param orderEvent
+     * @return
+     */
+
+    @CircuitBreaker(name = "kafkaProducerCircuitBreaker", fallbackMethod = "sendEventCircuitBreakerFallback")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public CompletableFuture<SendResult<String, Object>> sendEventAsyncWithCircuitBreaker(Long eventId, String orderEvent) {
+        return kafkaTemplate.send(kafkaTopicConfig.topic().name(), String.valueOf(eventId), orderEvent)
+                .handle((result, ex) -> {
+                    if (ex != null) {
+                        Throwable cause = ex instanceof ExecutionException ? ex.getCause() : ex;
+                        throw new RuntimeException(cause);
+                    }
+                    return result;
+                });
+    }
+
+    /**
+     * Fallback method called when CircuitBreaker is OPEN or producer fails after retries
+     */
+    public SendResult<String, Object> sendEventCircuitBreakerFallback(Long eventId, String orderEvent, Throwable ex) {
+        log.error("CircuitBreaker FALLBACK - Kafka unavailable for eventId={}, reason={}", eventId, ex.toString());
+
+        // Optional: persist failed event to DB for retry
+        // failedEventRepository.save(new FailedEvent(eventId, orderEvent, LocalDateTime.now(), ex.toString()));
+
+        return null; // or throw if you want the scheduler to log/retry
     }
 
     /**
@@ -84,10 +142,16 @@ public class KafkaPublisher {
         // Attach guaranteed logging for exceptions at CompletableFuture level
         return future.handle((result, ex) -> {
             if (ex != null) {
+                if (ex instanceof CallNotPermittedException) {
+                    // CIRCUIT IS OPEN — PRODUCER IS STOPPED
+                    log.warn("Kafka producer stopped by CircuitBreaker");
+                    //failedEventRepository.save(event);
+                }
                 Throwable cause = ex instanceof CompletionException ? ex.getCause() : ex;
                 if (cause instanceof KafkaException && cause.getCause() != null) {
                     cause = cause.getCause(); // unwrap KafkaException
                 }
+
                 //onFailure(ex) is called if the send failed (broker down, network, etc.)
                 onFailure(cause);
                 log.error("Error occurred: unable to write an event to KAFKA failed (CompletableFuture): key={}, topic={}",
