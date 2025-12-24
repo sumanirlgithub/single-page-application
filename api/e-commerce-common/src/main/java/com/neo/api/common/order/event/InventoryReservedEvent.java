@@ -1,7 +1,6 @@
 package com.neo.api.common.order.event;
 
 import com.neo.api.common.enums.InventoryEventName;
-import com.neo.api.common.enums.OrderEventName;
 
 import java.io.Serializable;
 import java.time.Instant;
