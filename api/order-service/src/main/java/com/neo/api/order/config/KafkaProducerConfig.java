@@ -37,6 +37,8 @@ public class KafkaProducerConfig {
     private String transactionIdPrefix;
 
 
+
+
     @Bean
     public ProducerFactory<String, Object> producerFactory()
     {
@@ -104,7 +106,7 @@ public class KafkaProducerConfig {
             public void onError(ProducerRecord<String, Object> producerRecord,
                                 RecordMetadata metadata,
                                 Exception exception) {
-                log.error("Kafka send failed (ProducerListener) for: key={}, topic={}",
+                log.error("(ProducerListener - Kafka send failed  for: key={}, topic={}",
                         producerRecord.key(), producerRecord.topic(), exception);
                 // call fallback or persist event for retry
                 sendEventFallback(Long.valueOf(producerRecord.key()), producerRecord.value().toString(), exception);
@@ -139,7 +141,7 @@ public class KafkaProducerConfig {
      * Exceptions thrown before calling KafkaTemplate.send() (e.g., null pointer, DB access errors).
      */
     public void sendEventFallback(Long eventId, String orderEvent, Throwable ex) {
-        log.error("[FALLBACK] Kafka unavailable for eventId={}, reason={}", eventId, ex.toString());
+        log.error("FALLBACK (ProducerListener) - Kafka unavailable for eventId={}, reason={}", eventId, ex.toString());
         // Optional: persist failed event to DB for retry
         // failedEventRepository.save(new FailedEvent(eventId, orderEvent, LocalDateTime.now(), ex.toString()));
     }

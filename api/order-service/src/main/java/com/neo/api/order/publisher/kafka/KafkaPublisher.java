@@ -44,9 +44,10 @@ public class KafkaPublisher {
 	private final KafkaTopicConfig kafkaTopicConfig;
 	private final KafkaTemplate<String, Object> kafkaTemplate;
     private final OutboundEventJpaRepository outboundEventJpaRepository;
+    private final KafkaPublishGate kafkaPublishGate;
 
     /**
-     * Spring boot scheduler will send order event as java object (JSON) to KAFKA ORDER-TOPIC.
+     * Spring boot scheduler will send order event as JSON as string to KAFKA ORDER-TOPIC.
      * This event will be processed by payment-service for further processing.
      */
     @Scheduled(fixedDelayString = "${outbound.publish.delay:30000}")
@@ -54,6 +55,11 @@ public class KafkaPublisher {
     public void publishEvents() {
         List<OutboundEvent> events = outboundEventJpaRepository.findTop100BySentFalseOrderByCreatedAtAsc();
         List<CompletableFuture<SendResult<String, Object>>> futures = new ArrayList<>();
+
+        // STOP NEXT MESSAGE HERE
+        if (!kafkaPublishGate.allowSend()) {
+            throw new IllegalStateException("Kafka sending paused");
+        }
 
         for (OutboundEvent event : events) {
             CompletableFuture<SendResult<String, Object>> future = sendEventAsyncWithCircuitBreaker(event.getId(), event.getPayload())
@@ -63,8 +69,8 @@ public class KafkaPublisher {
                         return result;
                     })
                     .exceptionally(ex -> {
-                        log.error("Kafka publish failed for eventId={}", event.getId(), ex);
-                        return null; // fallback is already triggered via CircuitBreaker
+                        log.error("Scheduler method - Kafka send failed for eventId={}", event.getId(), ex);
+                        return null; // fallback is already triggered either via ProducerListener or CircuitBreaker
                     });
 
             futures.add(future);
@@ -77,7 +83,7 @@ public class KafkaPublisher {
     }
 
     /**
-     * Async Kafka producer method with Resilience4j CircuitBreaker
+     * Async send - Kafka producer method with Resilience4j CircuitBreaker
      * Certain exceptions, like TimeoutException: Topic … not present in metadata, happen inside the producer thread before the
      * CompletableFuture returned by KafkaTemplate.send() is completed.
      * These exceptions are already handled by the ProducerListener (which logs them) and do not propagate to the CompletableFuture.
@@ -99,9 +105,12 @@ public class KafkaPublisher {
         return kafkaTemplate.send(kafkaTopicConfig.topic().name(), String.valueOf(eventId), orderEvent)
                 .handle((result, ex) -> {
                     if (ex != null) {
+                        kafkaPublishGate.onFailure();
                         Throwable cause = ex instanceof ExecutionException ? ex.getCause() : ex;
                         throw new RuntimeException(cause);
                     }
+                    kafkaPublishGate.onSuccess();
+                    // returned record metadata/acknowledgment (ack) info already has been logged in ProducerListener onSuccess() method.
                     return result;
                 });
     }
@@ -110,11 +119,9 @@ public class KafkaPublisher {
      * Fallback method called when CircuitBreaker is OPEN or producer fails after retries
      */
     public SendResult<String, Object> sendEventCircuitBreakerFallback(Long eventId, String orderEvent, Throwable ex) {
-        log.error("CircuitBreaker FALLBACK - Kafka unavailable for eventId={}, reason={}", eventId, ex.toString());
-
+        log.error("CircuitBreaker FALLBACK executed- Kafka unavailable for eventId={}, reason={}", eventId, ex.toString());
         // Optional: persist failed event to DB for retry
         // failedEventRepository.save(new FailedEvent(eventId, orderEvent, LocalDateTime.now(), ex.toString()));
-
         return null; // or throw if you want the scheduler to log/retry
     }
 

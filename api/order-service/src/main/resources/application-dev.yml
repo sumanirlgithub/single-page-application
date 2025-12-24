@@ -22,10 +22,11 @@ resilience4j:
     configs:
       kafkaProducer:
         failureRateThreshold: 50
-        slidingWindowSize: 10
         minimumNumberOfCalls: 5
+        slidingWindowSize: 10
         waitDurationInOpenState: 30s
-        permittedNumberOfCallsInHalfOpenState: 3
+        permittedNumberOfCallsInHalfOpenState: 2
+        automatic-transition-from-open-to-half-open-enabled: true
         recordExceptions:
           - org.apache.kafka.common.errors.TimeoutException
           - org.apache.kafka.common.errors.NetworkException
