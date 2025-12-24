@@ -1,11 +1,8 @@
 package com.neo.api.order.service;
 
-import com.neo.api.common.enums.OrderEventName;
 import com.neo.api.common.enums.OrderStatus;
-import com.neo.api.common.order.event.OrderEvent;
 import com.neo.api.order.client.InventoryFeignClient;
 import com.neo.api.order.client.InventoryFeignClientAsyncCall;
-import com.neo.api.order.client.PaymentFeignClient;
 import com.neo.api.order.entity.Customer;
 import com.neo.api.order.entity.OrderItem;
 import com.neo.api.order.entity.OutboundEvent;
@@ -30,13 +27,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -110,12 +104,11 @@ public class OrderService {
         orderJpaRepository.save(order);
         log.info("Order successfully created in database with PENDING status");
 
-        //Step-4 Save order event into Outbound_Event table
-        OrderEvent orderEvent = new OrderEvent(UUID.randomUUID(), OrderEventName.ORDER_CREATED, order.getOrderId(),
-                order.getTotalValue().doubleValue(), LocalDateTime.now());
+        //Step-4 Create and Save order event into Outbound_Event table
         OutboundEvent outboundEvent = new OutboundEvent();
-        outboundEvent.setTopic("ORDER-CREATED-TOPIC");
-        outboundEvent.setPayload(jsonUtil.toJson(orderEvent));
+        outboundEvent.setOrderId(order.getOrderId());
+        outboundEvent.setEventType("ORDER_CREATED");
+        outboundEvent.setPayload(jsonUtil.toJson(order));
         outboundEvent.setSent(false);
         outboundEventJpaRepository.save(outboundEvent);
         log.info("Order outbound event successfully saved into database");

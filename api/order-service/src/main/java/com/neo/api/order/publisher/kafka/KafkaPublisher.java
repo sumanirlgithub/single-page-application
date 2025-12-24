@@ -1,8 +1,10 @@
 package com.neo.api.order.publisher.kafka;
 
 import com.neo.api.common.avro.model.generated.OrderEventName;
+import com.neo.api.common.enums.OrderEventType;
 import com.neo.api.order.entity.OutboundEvent;
 import com.neo.api.order.repository.OutboundEventJpaRepository;
+import com.neo.api.order.service.JsonUtil;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.apache.kafka.common.errors.TimeoutException;
@@ -45,6 +47,7 @@ public class KafkaPublisher {
 	private final KafkaTemplate<String, Object> kafkaTemplate;
     private final OutboundEventJpaRepository outboundEventJpaRepository;
     private final KafkaPublishGate kafkaPublishGate;
+    private final JsonUtil jsonUtil;
 
     /**
      * Spring boot scheduler will send order event as JSON as string to KAFKA ORDER-TOPIC.
@@ -62,14 +65,16 @@ public class KafkaPublisher {
         }
 
         for (OutboundEvent event : events) {
-            CompletableFuture<SendResult<String, Object>> future = sendEventAsyncWithCircuitBreaker(event.getId(), event.getPayload())
+            OrderEvent orderEvent = new OrderEvent (event.getEventId(), OrderEventType.valueOf(event.getEventType()),
+                    event.getPayload(), LocalDateTime.now());
+            CompletableFuture<SendResult<String, Object>> future = sendEventAsyncWithCircuitBreaker(event.getOrderId(), jsonUtil.toJson(orderEvent))
                     .thenApply(result -> {
                         event.setSent(true);
                         log.info("Order event successfully published to Kafka topic");
                         return result;
                     })
                     .exceptionally(ex -> {
-                        log.error("Scheduler method - Kafka send failed for eventId={}", event.getId(), ex);
+                        log.error("Scheduler method - Kafka send failed for eventId={}", event.getEventId(), ex);
                         return null; // fallback is already triggered either via ProducerListener or CircuitBreaker
                     });
 
@@ -101,8 +106,8 @@ public class KafkaPublisher {
 
     @CircuitBreaker(name = "kafkaProducerCircuitBreaker", fallbackMethod = "sendEventCircuitBreakerFallback")
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public CompletableFuture<SendResult<String, Object>> sendEventAsyncWithCircuitBreaker(Long eventId, String orderEvent) {
-        return kafkaTemplate.send(kafkaTopicConfig.topic().name(), String.valueOf(eventId), orderEvent)
+    public CompletableFuture<SendResult<String, Object>> sendEventAsyncWithCircuitBreaker(String orderId, String orderEvent) {
+        return kafkaTemplate.send(kafkaTopicConfig.topic().name(), orderId, orderEvent)
                 .handle((result, ex) -> {
                     if (ex != null) {
                         kafkaPublishGate.onFailure();
@@ -119,7 +124,7 @@ public class KafkaPublisher {
      * Fallback method called when CircuitBreaker is OPEN or producer fails after retries
      */
     public SendResult<String, Object> sendEventCircuitBreakerFallback(Long eventId, String orderEvent, Throwable ex) {
-        log.error("CircuitBreaker FALLBACK executed- Kafka unavailable for eventId={}, reason={}", eventId, ex.toString());
+        log.error("CircuitBreaker FALLBACK executed- Kafka unavailable for orderId={}, reason={}", eventId, ex.toString());
         // Optional: persist failed event to DB for retry
         // failedEventRepository.save(new FailedEvent(eventId, orderEvent, LocalDateTime.now(), ex.toString()));
         return null; // or throw if you want the scheduler to log/retry
@@ -185,8 +190,8 @@ public class KafkaPublisher {
      * @param orderEvent
      * @return
      */
-    public CompletableFuture<SendResult<String, Object>> sendEventAsync(OrderEvent orderEvent) {
-        final String key = String.valueOf(orderEvent.orderId());
+    public CompletableFuture<SendResult<String, Object>> sendEventAsync(String orderId, OrderEvent orderEvent) {
+        final String key = orderId;
 
         // Modern KafkaTemplate.send() returns CompletableFuture directly
         CompletableFuture<SendResult<String, Object>> future =

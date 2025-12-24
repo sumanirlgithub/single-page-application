@@ -14,16 +14,20 @@ public class OutboundEvent {
 
     @Id
     @GeneratedValue
-    private Long id;
+    private Long eventId;
 
-    private String topic;
+    @Column(name = "event_type", nullable = false)
+    private String eventType;
 
-    @Lob
-    @Column(nullable = false)
-    private String payload;
+    @Column(name="order_id", nullable = false)
+    private String orderId;
 
     @Column(nullable = false)
     private boolean sent = false;
+
+    @Lob
+    @Column(name = "paylaod",  columnDefinition = "TEXT", nullable = false)
+    private String payload;
 
     @Column(name = "created_at", updatable = false)
     @CreationTimestamp
