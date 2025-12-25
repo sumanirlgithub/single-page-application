@@ -1,0 +1,203 @@
+GIT HUB remote repository - https://github.com/sumanirlgithub/single-page-application
+maven VM option
+-Dspring.profiles.active=dev -Djavax.net.ssl.trustStore=C:/projects/ssl_certificate/truststore.payment.dev.jks
+
+# Start MySql database instance - Services > MySQL80
+Database Details
+database name: sumandb
+Tables: PUR_ORDER, ORDER_ITEM
+
+**********************************************************************
+REST Endpoint:
+GET with Query Params: http://localhost:8089/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001
+
+#ToDo Idempotency-Key should be sent in the HTTP request header, so backend api can check the Idempotency-Key and do not process duplicate order
+POST: http://localhost:8089/api/order-service/orders
+
+# Start configuration-service application
+
+# Run eureka-service-registry (service)
+
+# Start inventory-service as order-service make a call to inventory-service
+
+Notes: If KAFKA broker is not ready, then an order will not be created and application will throw a runtime unchecked exceptions.
+Kafka Producer Listener can be registered to log the failure messages.
+
+#start docker image for kafka broker - order-service will create an order and then send order event to kafka topic.
+# The order event will be processed by payment-service
+Start Docker Desktop (Docker Engine)
+cd C:\projects\git-repos\citi-application\api\order-service\docker\kafka-kraft-single-broker\docker-compose-file-confluentic
+✅ Correct working configuration (KRaft, 2 brokers)
+Step 1: Generate a cluster ID (do this once)
+docker run --rm confluentinc/confluent-local:7.4.1 kafka-storage random-uuid
+
+docker compose down -v
+docker compose up -> creates and starts containers
+docker compose up -d -> Re-start docker container in detached (background) mode
+docker logs broker1
+
+ docker pause broker1
+ docker unpause broke
+
+# Run kafka-ui container to see the incoming messages into the topics
+URL to access kafka-ui - http://localhost:9999/
+
+# Stop Kafka broker
+docker ps
+docket stop <container_name_or_id>
+
+docker stop broker1
+docker start broker1
+
+Run Redis server locally from PowerShell using docker -
+docker run --name redis -p 6379:6379 redis
+docker run -d --name redis -p 6379:6379 redis:latest
+
+#Start the existing Redis container
+docker start redis
+docker ps
+
+*********************************************************************
+Jenkins
+http://localhost:9090/
+user admin
+password admin
+
+Keycloak
+docker run -p 8080:8080 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:26.2.5 start-dev
+http://localhost:8080/
+username: admin
+password: admin
+
+Securing Spring Boot with Keycloak
+https://medium.com/@wahyubagus1910/securing-spring-boot-with-keycloak-b352f05575f2
+
+run the following command to pull the docker image for Swagger.
+docker pull swaggerapi/swagger-ui
+
+run the swagger application and access the UI, run the following command.
+docker run -dp 8080:8080 swaggerapi/swagger-ui
+
+*****************************************
+Endpoints:
+http://localhost:8089/api/order-service/actuator/refresh
+http://localhost:8089/api/order-service/orders/4028800f9446ce48019446ceea260001
+GET request  - http://localhost:8089/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001
+http://localhost:8089/api/order-service/orders
+
+http://localhost:8089/api/order-service/customers
+
+http://localhost:8089/api/order-service/payment-insight-manual?paymentNumber=841f5033-11e5-4b53-9407-8e6f6b91fe22
+
+# this url calls payment-service
+http://localhost:8089/api/order-service/payment-status?paymentNumber=984367801
+
+
+Actuator endpoints
+http://localhost:9001/actuator
+http://localhost:9001/actuator/health
+http://localhost:9001/actuator/info
+http://localhost:9001/actuator/metrics
+http://localhost:9001/actuator/metrics/jvm.memory.used
+http://localhost:9001/actuator/beans
+http://localhost:9001/actuator/threaddump (endpoint can be used to capture detailed information about HTTP requests and thread activity, which can be helpful for debugging performance issues.)
+
+*********************************************
+
+Endpoint url - http://localhost:8089/atis/api/order-service/orders
+The above url will create a order and send order event to kafka topic.
+
+Saga pattern -
+Microservice Patterns: Saga Choreography
+https://salithachathuranga94.medium.com/microservice-patterns-saga-choreography-7319a91b2f90
+
+Start MySql Database server
+Services -> MySQL80 -> start
+
+Endpoint: http://localhost:8089/atis/api/order-service/customer
+
+Request Payload:
+    {
+       "name": "suman",
+       "email": "suman.com"
+    }
+
+Endpoint: http://localhost:8089/atis/api/order-service/order-items
+
+Request Payload:
+
+    {
+       "customerId": "177704ec-64ff-4c82-a12d-06360ede70ea",
+       "orderDetails": "suman-orderDetails",
+       "items": [
+           {
+               "itemName": "computer"
+           }
+       ]
+
+    }
+
+**************************************
+
+Create an SSL secured web (REST) service with client authentication (X509) using Spring Boot.
+we use a keystore and a truststore when our application needs to communicate over SSL/TLS.
+Steps:
+1) Generate a private key:
+The most basic form of the genrsa command specifies the name of the output file containing the key and specifies AES256 encryption (required).
+openssl genrsa -out private-key.pem -aes256 -passout pass:Passw0rd1 2048
+
+2) Generate a CSR:
+openssl req -new -key private-key.pem -out CSR.csr
+
+3) Generate a SSL Certificate
+openssl x509 -req -days 3650 -in CSR.csr -signkey private-key.pem -out localhost-payment-service.crt
+
+4) Import the SSL Certificate into your keystore (Create Java Keystore File)
+
+OpenSSL pkcs12 -export -out keystore.p12 -inkey private-key.pem -in localhost-payment-service.crt
+
+keytool -importkeystore -destkeystore keystore.jks -srcstoretype PKCS12 -srckeystore keystore.p12
+
+5) Copy keystore.jks to /src/main/resources folder (payment - a server module)
+
+6) Accessing the Server via RestTemplate or FeignClientConfig
+
+keytool -import -file localhost-payment-service.crt -alias 1 -keystore truststore.tts.sandbox.api.citigroup.net.jks
+
+7) Copy truststore.tts.sandbox.api.citigroup.net.jks to /src/main/resources folder (order-service - a client module)
+
+8) Start both application payment module and order-service module
+
+*************************************************************************************************
+
+POST: http://localhost:8089/api/order-service/orders
+Request Payload:
+
+    {
+       "customerId": "4028800f942b316f01942b32ad500003",
+       "orderDetails": "suman-orderDetails",
+       "items": [
+           {
+               "itemName": "Dell-Pro computer",
+               "itemCode": 101,
+               "quantity": 1,
+               "unitPrice": 10.0
+
+           },
+           {
+               "itemName": "mobile",
+               "itemCode": 102,
+               "quantity": 1,
+               "unitPrice": 10.0
+           },
+           {
+               "itemName": "printer",
+               "itemCode": 103,
+               "quantity": 1,
+               "unitPrice": 10.0
+           }
+
+
+       ]
+
+    }
