@@ -1,13 +1,19 @@
 package com.neo.payment.domain.handler.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.neo.api.common.avro.model.generated.OrderAvroEvent;
 import com.neo.api.common.enums.PaymentEventName;
 import com.neo.api.common.enums.PaymentStatus;
 import com.neo.api.common.order.event.OrderEvent;
 import com.neo.api.common.payment.event.PaymentEvent;
 import com.neo.payment.domain.handler.OrderEventHandler;
+import com.neo.payment.exception.TransientProcessingException;
 import com.neo.payment.publisher.kafka.KafkaPublisher;
 import com.neo.payment.repository.PaymentRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,8 +30,8 @@ public class OrderEventHandlerImpl implements OrderEventHandler {
     private final KafkaPublisher kafkaPublisher;
 
     @Override
-    public void onEvent(OrderEvent event) throws SocketException {
-        switch (event.eventName()) {
+    public void onEvent(OrderEvent event) throws SocketException, JsonProcessingException {
+        switch (event.eventType()) {
             case ORDER_CREATED:
                 processPayment(event);
                 //createShipment(event);
@@ -38,20 +44,37 @@ public class OrderEventHandlerImpl implements OrderEventHandler {
         }
     }
 
+    @Retry(name = "orderProcessingRetry")
+    @CircuitBreaker(name = "orderProcessingCircuitBreaker", fallbackMethod = "fallbackCircuitBreaker")
     private void processPayment(OrderEvent event){
         boolean paymentProcessed = true;
         // ToDo: add payment processing logic here and set paymentProcessed if payment processed successfully ...
+        // ToDo: DB / REST / downstream calls
+
+        paymentProcessed= false;
 
         PaymentEventName paymentEvent = PaymentEventName.FAILED;
         String paymentStatus = "FAILED";
         if (paymentProcessed) {
             paymentEvent = PaymentEventName.COMPLETED;
             paymentStatus = PaymentStatus.COMPLETED.name();
-            log.info("Payment record created successfully for the order id: {}.", event.orderId());
+            log.info("Payment record created successfully for the event id: {}.", event.eventId());
         } else {
-            log.info("Payment processing failed for the order id: {}.", event.orderId());
+            log.info("Payment processing failed for the event id: {}.", event.eventId());
+            // Simulate CircuitBreaker fallback and send the failed message to DLQ
+            throw new RuntimeException("Unable to process payment successfully");
         }
         //kafkaPublisher.createAndSendEvent(new PaymentEvent(paymentEvent, event.orderId(), paymentStatus, Instant.now()));
+    }
+
+    /**
+     * TransientProcessingException can occur due to Temporary DB outage,
+     * Downstream service timeout, Cache unavailable, and Network glitch
+     * @param event
+     * @param ex
+     */
+    public void fallback(OrderEvent event, Throwable ex) {
+        throw new TransientProcessingException("Circuit open", ex);
     }
 
     private void createShipment(OrderEvent event) {

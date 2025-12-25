@@ -107,6 +107,7 @@ public class KafkaPublisher {
     @CircuitBreaker(name = "kafkaProducerCircuitBreaker", fallbackMethod = "sendEventCircuitBreakerFallback")
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public CompletableFuture<SendResult<String, Object>> sendEventAsyncWithCircuitBreaker(String orderId, String orderEvent) {
+        // send order event as string to Kafka topic
         return kafkaTemplate.send(kafkaTopicConfig.topic().name(), orderId, orderEvent)
                 .handle((result, ex) -> {
                     if (ex != null) {

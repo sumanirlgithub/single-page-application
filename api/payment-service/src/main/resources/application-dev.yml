@@ -57,6 +57,7 @@ order:
 
 kafka:
   topics:
+    order-events--dlq: ORDER-EVENTS-DLQ-TOPIC
     payment: PAYMENT-PROCESS-TOPIC
     partitions: 3
     replication:
@@ -75,6 +76,25 @@ jwt:
       resource-id: payment-service-client
       principle-attribute: admin
 
+resilience4j:
+  retry:
+    instances:
+      orderProcessingRetry:
+        max-attempts: 3
+        wait-duration: 2s
+        retry-exceptions:
+          - java.net.ConnectException
+          - java.sql.SQLTransientException
+          - java.util.concurrent.TimeoutException
+
+  circuitbreaker:
+    instances:
+      orderProcessingCircuitBreaker:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        minimum-number-of-calls: 5
+
 spring:
   application: 'payment-service'
   security:
@@ -84,9 +104,15 @@ spring:
           issuer-uri: http://localhost:8080/realms/payment-realm
           jwk-set-uri: http://localhost:8080/realms/payment-realm/protocol/openid-connect/certs
   kafka:
+    properties:
+      schema.registry.url: http://192.168.0.143:9021
     bootstrap-servers: localhost:9092
-    registry:
-      url: http://192.168.0.143:9021
+    producer:
+      acks: all
+      linger-ms: 0
+      properties:
+        enable:
+          idempotence: true
     consumer:
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer

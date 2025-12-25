@@ -1,4 +1,4 @@
-package com.neo.api.order.config;
+package com.neo.payment.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -18,7 +18,7 @@ import java.util.Map;
 
 @Configuration
 @Slf4j
-public class KafkaProducerConfig {
+public class KafkaDLQProducerConfig {
 
     @Value(value = "${spring.kafka.bootstrap-servers}")
     private String bootstrapAddress;
@@ -61,18 +61,7 @@ public class KafkaProducerConfig {
 
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        //configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-
-        // When using Avro schema to send a message to Kafka topic - first do Schema Registry
-        //configProps.put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
-        //configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringSerializer.class);
-        //configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, io.confluent.kafka.serializers.KafkaAvroSerializer.class);
-
-        //return new DefaultKafkaProducerFactory<>(configProps);
-        DefaultKafkaProducerFactory<String, Object> factory =
-                new DefaultKafkaProducerFactory<>(configProps);
-        //factory.setTransactionIdPrefix(transactionIdPrefix);
-        return factory;
+        return new DefaultKafkaProducerFactory<>(configProps);
     }
 
     @Bean
