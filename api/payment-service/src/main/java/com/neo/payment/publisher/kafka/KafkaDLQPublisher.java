@@ -21,7 +21,7 @@ public class KafkaDLQPublisher {
     private final JsonUtil jsonUtil;
 
     public void sendToDLQ(OrderEvent event, Exception ex) {
-        DlqEvent dlqEvent = new DlqEvent(event, ex.getMessage(), LocalDateTime.now());
+        DlqEvent dlqEvent = new DlqEvent(event, ex.getCause().toString(), LocalDateTime.now());
 
         kafkaTemplate.send(kafkaDlqTopicConfig.dLqTopic().name(), String.valueOf(event.eventId()), jsonUtil.toJson(dlqEvent));
     }

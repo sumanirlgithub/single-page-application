@@ -97,9 +97,9 @@ public class OrderService {
         if (!isProductInStock) {
             throw new RuntimeException("Unable to check the product availability in stock");
         }
-        //Step-3 Create an order into database with status 'PENDING'
+        //Step-3 Create an order into database with status 'CREATED'
         PurchaseOrder order = convertOrderRequestToEntity(orderRequest);
-        order.setOrderStatus(OrderStatus.PENDING);
+        order.setOrderStatus(OrderStatus.CREATED);
         order.setCustomerId(customer.getCustomerId());
         orderJpaRepository.save(order);
         log.info("Order successfully created in database with PENDING status");
