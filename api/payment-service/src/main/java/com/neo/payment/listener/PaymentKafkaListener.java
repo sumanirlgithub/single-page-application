@@ -77,6 +77,7 @@ public class PaymentKafkaListener implements ConsumerSeekAware {
     /**
      * @DltHandler marks a method that should handle messages from the Dead Letter Topic created by Spring Kafka’s error handling infrastructure.
      * Without @DltHandler, you would need a separate KafkaListener for the DLT topic.
+     * Spring KAFKA automatically creates DLT topic corresponding to each main topic.
      * @param message
      */
     @DltHandler

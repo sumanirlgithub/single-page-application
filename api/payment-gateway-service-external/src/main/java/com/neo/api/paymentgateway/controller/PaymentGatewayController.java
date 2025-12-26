@@ -20,7 +20,9 @@ public class PaymentGatewayController {
      * Endpoint process payment.
      */
     @PostMapping("/process")
-    public PaymentResponse process(@Valid @RequestBody PaymentRequest req) {
+    public PaymentResponse process(
+            //@Valid
+            @RequestBody PaymentRequest req) {
         // blocking logic, maybe calls DB
         return PaymentResponse.builder().status("SUCCESS").build();
     }

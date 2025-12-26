@@ -83,6 +83,7 @@ resilience4j:
         max-attempts: 3
         wait-duration: 2s
         retry-exceptions:
+          - org.springframework.web.reactive.function.client.WebClientRequestException
           - java.net.ConnectException
           - java.sql.SQLTransientException
           - java.util.concurrent.TimeoutException
@@ -94,7 +95,15 @@ resilience4j:
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
         minimum-number-of-calls: 5
-
+        recordExceptions:
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+          - org.apache.kafka.common.errors.TimeoutException
+          - org.apache.kafka.common.errors.NetworkException
+          - org.apache.kafka.common.errors.UnknownTopicOrPartitionException
+          - org.apache.kafka.common.errors.NotLeaderForPartitionException
+          - java.net.ConnectException
+          - java.util.concurrent.ExecutionException
+          - java.lang.RuntimeException
 spring:
   application: 'payment-service'
   security:
@@ -183,6 +192,21 @@ connect:
       client:
         id: test
         secret: test
+
+payment-gateway:
+  queue: payment-queue
+  ssl:
+    trust-store: classpath:truststore.payment.dev.jks
+    trust-store-password: Passw0rd1
+  service:
+    connection-timeout: 1000
+    #url: https://localhost:8086/payment-gateways-service/api/payments/process
+    url: http://localhost:8086/payment-gateways-service/api/payments/process
+    auth:
+      url: https://localhost:8071/api/auth
+      client-id:
+      client-secret: test
+
 #  jks: classpath:keystore.jks
 #  jks-password: Password1
 #  http-client:

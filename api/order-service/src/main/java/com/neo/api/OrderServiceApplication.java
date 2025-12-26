@@ -71,7 +71,7 @@ public class OrderServiceApplication implements CommandLineRunner {
 
         purchaseOrder.setOrderDetails("first-order");
         purchaseOrder.setItems(orderItems);
-        purchaseOrder.setOrderStatus(OrderStatus.PENDING);
+        purchaseOrder.setOrderStatus(OrderStatus.CREATED);
         purchaseOrder.setCustomerId(customer.getCustomerId());
 
         orderJpaRepository.saveAndFlush(purchaseOrder);

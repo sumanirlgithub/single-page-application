@@ -6,6 +6,6 @@ import com.neo.api.common.order.event.OrderEvent;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public record DlqEvent(OrderEvent event, String ex, LocalDateTime createdDate) implements Serializable {
+public record DlqEvent(OrderEvent event, String reason, LocalDateTime createdDate) implements Serializable {
 
 }

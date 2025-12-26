@@ -36,7 +36,7 @@ public class OrderJpaRepositoryTest {
         PurchaseOrder purchaseOrder = new PurchaseOrder();
         purchaseOrder.setOrderId("101");
         purchaseOrder.setOrderDetails("my-order");
-        purchaseOrder.setOrderStatus(OrderStatus.PENDING);
+        purchaseOrder.setOrderStatus(OrderStatus.CREATED);
         purchaseOrder.setPaymentStatus(PaymentStatus.PENDING);
         purchaseOrder.setTotalValue(BigDecimal.valueOf(1000.00));
         purchaseOrder.setItems(Arrays.asList(item));

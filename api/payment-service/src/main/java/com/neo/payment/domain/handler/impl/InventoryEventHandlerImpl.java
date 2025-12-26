@@ -48,7 +48,7 @@ public class InventoryEventHandlerImpl implements InventoryEventHandler {
             log.info("Payment record created successfully for the order id: {}.", event.orderId());
             //kafkaPublisher.createAndSendEvent(new PaymentEvent(event.orderId(), paymentEvent, paymentStatus, Instant.now()));
             kafkaTemplate.send("PAYMENT-COMPLETED-TOPIC", new PaymentEvent(PaymentEventName.COMPLETED, event.orderId(),
-                    PaymentStatus.COMPLETED.name(), event.createdDate()));
+                    PaymentStatus.AUTHORIZED.name(), event.createdDate()));
         } catch (Exception e) {
             kafkaTemplate.send("PAYMENT-FAILED-TOPIC", new PaymentEvent(PaymentEventName.FAILED, event.orderId(),
                     PaymentStatus.FAILED.name(), event.createdDate()));

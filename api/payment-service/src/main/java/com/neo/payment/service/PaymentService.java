@@ -130,7 +130,7 @@ public class PaymentService {
 
     @Transactional
     public void savePaymentDetails(Payment payment) {
-        payment.setPaymentStatus(PaymentStatus.COMPLETED);
+        payment.setPaymentStatus(PaymentStatus.AUTHORIZED);
         paymentRepository.save(payment);
     }
 }
