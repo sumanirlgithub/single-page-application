@@ -4,8 +4,10 @@ import com.neo.api.order.auth.AuthService;
 import com.neo.api.order.client.InventoryFeignClient;
 import com.neo.api.order.client.InventoryFeignClientAsyncCall;
 import com.neo.api.order.client.PaymentFeignClient;
+import com.neo.api.order.dto.PaymentStatusResult;
 import com.neo.api.order.exception.PaymentInsightException;
-import com.neo.api.order.model.*;
+import com.neo.api.order.model.PaymentInsightRequest;
+import com.neo.api.order.model.PaymentInsightResponse;
 import com.neo.api.order.publisher.kafka.KafkaPublisher;
 import com.neo.api.order.repository.CustomerRepository;
 import com.neo.api.order.repository.OrderJpaRepository;
@@ -25,12 +27,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
@@ -39,7 +46,7 @@ import static com.neo.api.order.exception.PaymentInsightExceptionMessage.API_CAL
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class OrderServiceRestConsumer {
+public class PaymentClient {
 
     private final JmsTemplate jmsTemplate;
     private final OrderRepository orderRepository;
@@ -66,12 +73,56 @@ public class OrderServiceRestConsumer {
 
     /**
      * Make synchronous call to payment-service - Rest FeignClient
-     * Make asynchronous call to payment-service - Rest WebClient
+     * Make asynchronous non-blocking call to payment-service - Rest WebClient
      * Implement Circuit breaker design pattern to achieve fault tolerance
      *
-     * @param paymentNumber
+     * @param paymentNumbers
      * @return
      */
+    public ResponseEntity<List<PaymentStatusResult>> fetchPaymentStatuses(List<String> paymentNumbers) throws Exception {
+
+        Flux<PaymentStatusResult> resultFlux =
+                Flux.fromIterable(paymentNumbers)
+                        .flatMap(paymentNumber ->
+                                        callExternalApi(paymentNumber)
+                                                .map(response -> PaymentStatusResult.success(paymentNumber, response))
+                                                .onErrorResume(ex ->
+                                                        Mono.just(PaymentStatusResult.failure(paymentNumber, ex))
+                                                ),
+                                50 // concurrency limit
+                        );
+
+        Mono<List<PaymentStatusResult>> allResultsMono =
+                resultFlux.collectList();
+
+        //allResultsMono
+        //        .flatMap(results -> orderResultRepository.saveAll(results))
+        //        .subscribe();
+
+        // Or, if you are in a blocking service layer (not reactive end-to-end):
+        // Blocking is acceptable only at service boundary, not inside reactive pipelines.
+        List<PaymentStatusResult> results = allResultsMono.block();
+        //ToDo: orderResultRepository.saveAll(results);
+        return new ResponseEntity<>(results, HttpStatus.OK);
+    }
+
+    Mono<PaymentInsightResponse> callExternalApi(String paymentNumber) {
+        return webClient.post()
+                .uri("/process")
+                .bodyValue(paymentNumber)
+                .retrieve()
+                //.bodyToMono(ExternalApiResponse.class);
+                .bodyToMono(PaymentInsightResponse.class);
+    }
+
+        /**
+         * Make synchronous call to payment-service - Rest FeignClient
+         * Make asynchronous call to payment-service - Rest WebClient
+         * Implement Circuit breaker design pattern to achieve fault tolerance
+         *
+         * @param paymentNumber
+         * @return
+         */
     public ResponseEntity<List<PaymentInsightResponse>> manualRefreshPaymentStatus(String paymentNumber) throws Exception {
 
         List<String> uetrNumber = Collections.singletonList("6f7a55fb-6ef1-4a26-ba66-a812554937d8");

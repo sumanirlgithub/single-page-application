@@ -5,7 +5,6 @@ import com.neo.api.order.model.OrderRequestPayload;
 import com.neo.api.order.model.OrderResponsePayload;
 import com.neo.api.order.model.PaymentInsightResponse;
 import com.neo.api.order.service.OrderService;
-import com.neo.api.order.service.OrderServiceRestConsumer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +24,6 @@ import java.util.concurrent.ExecutionException;
 //@RequestMapping("/orders")
 public class OrderController {
     private final OrderService orderService;
-    private final OrderServiceRestConsumer orderServiceRestConsumer;
 
     @Value("${message2}") // this property is defined in Spring Cloud Config Server (configuration-service)
     private String message2Property;
@@ -60,9 +58,4 @@ public class OrderController {
         return orderService.placeOrder(orderRequest);
     }
 
-    @PostMapping("/payment-status")
-    public ResponseEntity<List<PaymentInsightResponse>> manualRefreshPaymentStatus(@RequestParam String paymentNumber) throws Exception {
-        log.info(message2Property);
-        return orderServiceRestConsumer.manualRefreshPaymentStatus(paymentNumber);
-    }
 }
