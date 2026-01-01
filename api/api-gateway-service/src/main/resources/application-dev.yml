@@ -1,0 +1,86 @@
+# dev configuration for api gateway application
+server:
+  port: 8081
+  #servlet:
+  #  contextPath: /api-gateway
+  error:
+    include-message: always
+    include-binding-error: always
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: DEBUG
+
+spring:
+  #webflux:
+  #  base-path: /api-gateway
+  main:
+    web-application-type: reactive # set web application type - reactive
+  application:
+    name: api-gateway-service
+  redis: # make sure redis server running on default port 6379
+    host: 192.168.99.100
+    port: 6379
+  cloud:
+    gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+      routes:
+        - id: order-service
+          predicates:
+            - Path=/api-gateway/api/v1/orders/**        # match downstream path
+          uri: http://localhost:8089
+          filters:
+            - StripPrefix=1                # keep /api/v1/orders in forwarded request
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter:
+                  replenishRate: 10 # allow 10 requests per second
+                  burstCapacity: 20 # allow max 20 concurrent requests at any given time
+                  requestedTokens: 1
+                  key-resolver: "#{@ipKeyResolver}"
+        - id: payment-service
+          predicates:
+            - Path=/api-gateway/api/v1/payment/**
+          uri: https://localhost:8088
+
+
+# Spring Boot Actuator configurations
+management:
+  server:
+    port: 9001
+    address: 127.0.0.1
+  info:
+    java:
+      enabled: true
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        #include: '*'
+        include: prometheus
+    health:
+      circuitbreakers:
+        enabled: true
+    endpoint:
+      metrics:
+        enabled: true
+        jvm:
+          enabled: true
+        web:
+          server:
+            requests: true
+      health:
+        show-details: always
+  metrics:
+    enable:
+      process:
+        files: true
+    web:
+      server:
+        requests: true

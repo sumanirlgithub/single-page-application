@@ -1,0 +1,45 @@
+maven VM option
+-Dspring.profiles.active=dev -Djavax.net.ssl.trustStore=C:/projects/ssl_certificate/truststore.payment.dev.jks
+
+# actuator url:
+http://localhost:9001/actuator
+http://localhost:9001/actuator/prometheus
+
+Grafana
+http://localhost:3000/login
+username: admin
+password: admin
+
+-------------------------------------
+
+Steps:Start Redis server locally using docker - docker run --name redis -p 6379:6379 redis
+1) docker ps
+2) Start api-gateway-service application
+API Gateway endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
+3) Start configuration-service application
+4) Start MySQL database instance - Services -> MySQL80
+5) Start eureka-service-discovery application
+6) Start order-service application
+7) Send GET Request through POSTMAN -
+    API Gateway endpoint - http://localhost:8081/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001
+    (Direct Order Service endpoint - http://localhost:8089/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001)
+    If you see the below message in the order-service application console logs -
+    OrderController   : Working DEV!! - This value is pulled from Spring Cloud Config Server - Suman 1111
+    OrderService   : Retrieve Order items for Order Id: 4028800f9446ce48019446ceea260001
+    That means Order-Service working and pulling configuration from the configuration-service
+
+    If you see the below message in the api-gateway-service console logs-
+    neo.api.gateway.filter.LoggingFilter   : Logging from global pre:
+    That means api-gateway-service working and Global filter at api gateway level is working.
+
+8) Start payment-service application
+9) Send GET Request through POSTMAN - http://localhost:8089/api/order-service/payment-status?paymentNumber=984367801
+    - Please note that eureka-service-discovery application must be running only then you will be make a call to payment-service
+    - ( order-service and payment-service depends on eureka-service-discovery application - (Discovery pattern)
+10)
+
+
+
+
+http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
+http://localhost:8089/api/v1/orders?order-id=4028800f9446ce48019446ceea260001

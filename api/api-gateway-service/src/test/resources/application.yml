@@ -1,0 +1,58 @@
+# dev configuration for swift workflow application
+server:
+  port: 8080
+  servlet:
+    contextPath: /atis/api/swift-workflow
+atis:
+  queues:
+    ext:
+      incoming:
+        #swift: ATIS.EXT.GET.SWIFT.CITISWITCH
+        swift: DEV.QUEUE.1
+# MQ server config
+ibm:
+  mq:
+    queueManager: QM1
+    channel: DEV.ADMIN.SVRCONN
+    connName: localhost(1414)
+    user: admin
+    password: passw0rd
+spring:
+  #datasource:
+  #  url: jdbc:h2:mem:testdb
+  #  driverClassName: org.h2.Driver
+  #  username: sa
+  #  password: password
+  #jpa:
+  #  database-platform: org.hibernate.dialect.MySQL8Dialect
+  datasource:
+    url: jdbc:mysql://localhost:3306/sumandb?allowPublicKeyRetrieval=true&useSSL=false
+    driverClassName: com.mysql.jdbc.Driver
+    username: root
+    password: root
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+  #config:
+  #  activate:
+  #    on-profile: dev
+
+oneaandt:
+  generic-poller:
+    poller-cron: 0/5 * * * * *
+
+logging:
+  level:
+    com:
+      atis:
+        api: DEBUG
+    org:
+      hibernate:
+        SQL: DEBUG
+        type: DEBUG
+
+payroll:
+  server:
+    base-url: http://localhost
+    port: 8072
+  api:
+    employee: /api/employee
