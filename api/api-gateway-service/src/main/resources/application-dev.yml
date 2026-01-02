@@ -11,6 +11,10 @@ logging:
     org.springframework.cloud.gateway: DEBUG
     reactor.netty: DEBUG
 
+jwt:
+  secret: "mySecretKeyForJwtValidation123456"
+  #secret: ${JWT_SECRET} # you can configure in Kubernetes secret yaml file.
+
 # api-gateway application.yml
 springdoc:
   swagger-ui:
