@@ -17,7 +17,8 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyExchange().permitAll()
+                        .pathMatchers("/auth/**").permitAll()
+                        .anyExchange().permitAll() // Gateway handles auth
                 )
                 .build();
     }

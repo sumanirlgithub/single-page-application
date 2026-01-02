@@ -16,8 +16,15 @@ API Gateway Swagger UI:
 http://localhost:8081/swagger-ui/index.html
 http://localhost:8081/api/hello-world-service/v3/api-docs
 
-GET endpoint:
-http://localhost:8081/api/hello-world-service/v1/hello-world
+API Gateway GET endpoint for hello-world-service:
+http://localhost:8081/api-gateway/api/hello-world-service/v1/hello-world
+
+API Gateway GET endpoint for order-service:
+http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
+
+API Gateway GET endpoint for payment-service:
+http://localhost:8081/api-gateway/api/v1/payment/status
+
 
 Steps:Start Redis server locally using docker - docker run --name redis -p 6379:6379 redis
 1) docker ps

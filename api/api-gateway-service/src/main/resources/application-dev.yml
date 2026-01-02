@@ -49,17 +49,18 @@ spring:
           predicates:
             - Path=/api/hello-world-service/v3/api-docs
           uri: http://localhost:8088
-          #filters:
-          #  - StripPrefix=1
         - id: hello-world-service
           predicates:
-            - Path=/api/hello-world-service/**
+            - Path=/api-gateway/api/hello-world-service/** # match downstream path
           uri: http://localhost:8088
+          filters:
+            - StripPrefix=1
         - id: order-service
           predicates:
-            - Path=/api/v1/orders/**        # match downstream path
+            - Path=/api-gateway/api/v1/orders/**        # match downstream path
           uri: http://localhost:8089
           filters:
+            - StripPrefix=1
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter:
@@ -71,6 +72,8 @@ spring:
           predicates:
             - Path=/api-gateway/api/v1/payment/**
           uri: https://localhost:8082
+          filters:
+            - StripPrefix=1
 
 # Spring Boot Actuator configurations
 management:
