@@ -21,7 +21,7 @@ import java.util.concurrent.ExecutionException;
 @RequiredArgsConstructor
 @Slf4j
 @RefreshScope
-//@RequestMapping("/orders")
+@RequestMapping("/v1")
 public class OrderController {
     private final OrderService orderService;
 

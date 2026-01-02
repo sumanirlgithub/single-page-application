@@ -11,10 +11,10 @@ complete end-to-end order → payment → inventory → notification architectur
 
 **********************************************************************
 REST Endpoint:
-GET with Query Params: http://localhost:8089/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001
+GET with Query Params: http://localhost:8089/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
 
 #ToDo Idempotency-Key should be sent in the HTTP request header, so backend api can check the Idempotency-Key and do not process duplicate order
-POST: http://localhost:8089/api/order-service/orders
+POST: http://localhost:8089/api/v1/orders
 
 # Start configuration-service application
 
@@ -33,6 +33,9 @@ cd C:\projects\git-repos\citi-application\api\order-service\docker\kafka-kraft-s
 Step 1: Generate a cluster ID (do this once)
 docker run --rm confluentinc/confluent-local:7.4.1 kafka-storage random-uuid
 
+docker container ls
+docker container ls -a
+docker stop <container-id>
 docker compose down -v
 docker compose up -> creates and starts containers
 docker compose up -d -> Re-start docker container in detached (background) mode
@@ -106,7 +109,7 @@ http://localhost:9001/actuator/threaddump (endpoint can be used to capture detai
 
 *********************************************
 
-Endpoint url - http://localhost:8089/atis/api/order-service/orders
+Endpoint url - http://localhost:8089/api/v1/orders
 The above url will create a order and send order event to kafka topic.
 
 Saga pattern -

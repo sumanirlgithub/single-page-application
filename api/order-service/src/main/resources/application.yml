@@ -1,8 +1,8 @@
 # dev configuration for swift workflow application
 server:
-  port: 8088
+  port: 8089
   servlet:
-    contextPath: /atis/api/order-service
+    contextPath: /api
   error:
     include-message: always
     include-binding-error: always

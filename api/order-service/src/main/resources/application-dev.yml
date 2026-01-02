@@ -2,7 +2,8 @@
 server:
   port: 8089
   servlet:
-    contextPath: /api/order-service
+    #contextPath: /api/order-service
+    contextPath: /api
   error:
     include-message: always
     include-binding-error: always

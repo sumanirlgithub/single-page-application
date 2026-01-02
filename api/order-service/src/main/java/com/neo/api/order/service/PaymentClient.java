@@ -72,8 +72,8 @@ public class PaymentClient {
     CircuitBreaker circuitBreaker = CircuitBreaker.ofDefaults("myCircuitBreaker");
 
     /**
-     * Make synchronous call to payment-service - Rest FeignClient
-     * Make asynchronous non-blocking call to payment-service - Rest WebClient
+     * Make synchronous call to external api payment-service - Rest FeignClient
+     * Make asynchronous non-blocking call to external api payment-service - Rest WebClient
      * Implement Circuit breaker design pattern to achieve fault tolerance
      *
      * @param paymentNumbers
