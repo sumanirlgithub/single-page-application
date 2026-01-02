@@ -12,6 +12,13 @@ password: admin
 
 -------------------------------------
 
+API Gateway Swagger UI:
+http://localhost:8081/swagger-ui/index.html
+http://localhost:8081/api/hello-world-service/v3/api-docs
+
+GET endpoint:
+http://localhost:8081/api/hello-world-service/v1/hello-world
+
 Steps:Start Redis server locally using docker - docker run --name redis -p 6379:6379 redis
 1) docker ps
 2) Start api-gateway-service application
@@ -37,9 +44,3 @@ API Gateway endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=
     - Please note that eureka-service-discovery application must be running only then you will be make a call to payment-service
     - ( order-service and payment-service depends on eureka-service-discovery application - (Discovery pattern)
 10)
-
-
-
-
-http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
-http://localhost:8089/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
