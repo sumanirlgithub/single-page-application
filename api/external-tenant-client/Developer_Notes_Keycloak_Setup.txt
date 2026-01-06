@@ -1,0 +1,52 @@
+
+Keycloak
+docker run -p 8080:8080 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:26.2.5 start-dev
+http://localhost:8080/
+username: admin
+password: admin
+
+Securing Spring Boot with Keycloak
+https://medium.com/@wahyubagus1910/securing-spring-boot-with-keycloak-b352f05575f2
+
+
+endpoint to get a token from Keycloak server:
+http://localhost:8083/api/auth/token?realm=tesco-dev
+
+realm- tesco-dev
+http://localhost:8080/realms/tesco-dev
+
+Steps to create rewalm and client:
+1) Create realm on http://localhost:8080/admin/master/console/#/master/realms
+2) Inside realm tesco-dev: Keycloak Admin Console → Clients → Create client
+Please note that Your use case is: Machine-to-machine (M2M) communication and You are using: grant_type=client_credentials
+1️⃣ Create a Client (VERY IMPORTANT)
+
+Inside realm tesco-dev:
+
+Keycloak Admin Console → Clients → Create client
+
+Client details
+Field	Value
+Client ID	tesco-api-client
+Client type	OpenID Connect
+Root URL	(leave empty)
+
+Click Next
+
+2️⃣ Configure Client Authentication
+Capability config
+Setting	Value
+Client authentication	✅ ON
+Authorization	❌ OFF
+Standard flow	❌ OFF
+Direct access grants	❌ OFF
+Service accounts	✅ ON
+
+Click Save
+
+On PowerShell execute the following curl command, you should get back access token
+curl.exe -X POST "http://localhost:8080/realms/tesco-dev/protocol/openid-connect/token" `
+  -H "Content-Type: application/x-www-form-urlencoded" `
+  -u tesco-api-client:vCUjvzEcaEIXDVVxyqQkHFudQN8PCfL1 `
+  -d "grant_type=client_credentials"
+
