@@ -2,7 +2,7 @@
 
 
 Endpoint:
-https://localhost:8088/payment-service/api/payment/status
+https://localhost:8088/api/v1/payment/status
 
 # link to access the swagger page
 https://localhost:8088/payment-service/api/payment/swagger-ui.html
