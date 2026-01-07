@@ -27,39 +27,3 @@ spring:
   redis: # make sure redis server running on default port 6379
     host: 192.168.99.100
     port: 6379
-
-# Spring Boot Actuator configurations
-management:
-  server:
-    port: 9001
-    address: 127.0.0.1
-  info:
-    java:
-      enabled: true
-    env:
-      enabled: true
-  endpoints:
-    web:
-      exposure:
-        #include: '*'
-        include: prometheus
-    health:
-      circuitbreakers:
-        enabled: true
-    endpoint:
-      metrics:
-        enabled: true
-        jvm:
-          enabled: true
-        web:
-          server:
-            requests: true
-      health:
-        show-details: always
-  metrics:
-    enable:
-      process:
-        files: true
-    web:
-      server:
-        requests: true

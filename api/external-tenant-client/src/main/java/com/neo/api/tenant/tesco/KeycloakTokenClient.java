@@ -26,8 +26,6 @@ public class KeycloakTokenClient {
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("grant_type", "client_credentials");
 
-        log.info("realmmmmmmmmmmmmmmmmmmmmmmmm: " + realm);
-
         return webClient.post()
                 .uri("/realms/{realm}/protocol/openid-connect/token", realm)
                 .bodyValue(body)

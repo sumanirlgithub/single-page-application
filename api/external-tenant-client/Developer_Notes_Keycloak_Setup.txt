@@ -13,6 +13,7 @@ endpoint to get a token from Keycloak server:
 http://localhost:8083/api/auth/token?realm=tesco-dev
 
 realm- tesco-dev
+you can have multiple clients under the same realm
 http://localhost:8080/realms/tesco-dev
 
 Steps to create rewalm and client:
