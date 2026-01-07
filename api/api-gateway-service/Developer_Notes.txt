@@ -12,6 +12,25 @@ password: admin
 
 -------------------------------------
 
+Token validation using Authorization server (Keycloak)
+realm- tesco-dev
+One Realm
+ ├── Tesco client → Tesco token
+ ├── Lidl client → Lidl token
+ └── Amazon client → Amazon token
+
+One API Gateway
+ └── Validates all tokens using realm public key
+
+This code does a magic for all client belongs to same realm
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/tesco-dev
+-----------------------------------------------------
+
 API Gateway Swagger UI:
 http://localhost:8081/swagger-ui/index.html
 http://localhost:8081/api/hello-world-service/v3/api-docs
@@ -20,21 +39,25 @@ API Gateway GET endpoint for hello-world-service:
 http://localhost:8081/api-gateway/api/hello-world-service/v1/hello-world
 
 API Gateway GET endpoint for order-service:
-http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
+http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f96ea57e10196ea58b3440001
 
 API Gateway GET endpoint for payment-service:
 http://localhost:8081/api-gateway/api/v1/payment/status
 
-
 Steps:Start Redis server locally using docker - docker run --name redis -p 6379:6379 redis
 1) docker ps
-2) Start api-gateway-service application
-API Gateway endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
+2) Start MySQL database instance - Services -> MySQL80
 3) Start configuration-service application
-4) Start MySQL database instance - Services -> MySQL80
+4) Start api-gateway-service application
+API Gateway endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
 5) Start eureka-service-discovery application
-6) Start order-service application
-7) Send GET Request through POSTMAN -
+6) Start payment-service application
+7) Start order-service application
+8) start external-tenant-client
+ - Get token endpoint - http://localhost:8083/api/auth/token?realm=tesco-dev
+ - copy token send it as Bearer Token with endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f96ea57e10196ea58b3440001
+
+9) Send GET Request through POSTMAN -
     API Gateway endpoint - http://localhost:8081/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001
     (Direct Order Service endpoint - http://localhost:8089/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001)
     If you see the below message in the order-service application console logs -
@@ -46,8 +69,69 @@ API Gateway endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=
     neo.api.gateway.filter.LoggingFilter   : Logging from global pre:
     That means api-gateway-service working and Global filter at api gateway level is working.
 
-8) Start payment-service application
-9) Send GET Request through POSTMAN - http://localhost:8089/api/order-service/payment-status?paymentNumber=984367801
+10) Send GET Request through POSTMAN - http://localhost:8089/api/order-service/payment-status?paymentNumber=984367801
     - Please note that eureka-service-discovery application must be running only then you will be make a call to payment-service
     - ( order-service and payment-service depends on eureka-service-discovery application - (Discovery pattern)
-10)
+
+
+
+*****************************************************************
+Authenticate request coming from the client using JWT token (SHARED SECRET (HS256) - symmetric signing algorithm)
+
+Client ──► Authorization Server ──► JWT
+   │                                  │
+   └──────── Authorization: Bearer ───┘
+                    │
+                    ▼
+           Spring Cloud Gateway
+              (validates JWT)
+
+Clients request tokens; Gateways verify tokens
+
+Client
+  │  (login / credentials)
+  ▼
+Authorization Server
+  │  (signs JWT with HS256 secret)
+  ▼
+JWT Access Token
+  │
+  ▼
+Client attaches:
+Authorization: Bearer <JWT>
+  │
+  ▼
+Spring Cloud Gateway
+  │  (verifies JWT using SAME secret)
+
+
+------------>
+Client application will send Client ID & Client Secret to Authorization Server in order to obtain JWT token
+Client ID & Client Secret (Machine-to-Machine)
+Who uses it: Backend services, Cron jobs, Microservices
+What client sends:client_id, client_secret
+OAuth2 Grant: Client Credentials
+Example
+POST /oauth/token
+Authorization: Basic base64(clientId:clientSecret)
+grant_type=client_credentials
+
+Correct architecture (Client Credentials flow)
+Client (service / job)
+   │
+   │  POST /oauth/token
+   │  (client_id + client_secret)
+   ▼
+Authorization Server
+   │
+   │  JWT access token
+   ▼
+Client
+   │
+   │  Authorization: Bearer <JWT>
+   ▼
+API Gateway
+   │
+   ▼
+Backend services
+****************************************************************

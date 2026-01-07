@@ -11,10 +11,6 @@ logging:
     org.springframework.cloud.gateway: DEBUG
     reactor.netty: DEBUG
 
-jwt:
-  secret: "mySecretKeyForJwtValidation123456"
-  #secret: ${JWT_SECRET} # you can configure in Kubernetes secret yaml file.
-
 # api-gateway application.yml
 springdoc:
   swagger-ui:
@@ -23,7 +19,17 @@ springdoc:
       - name: hello-world-service
         url: /api/hello-world-service/v3/api-docs
 
+# Spring Security internally, extract the token from client's request headers, call Keycloak server, download public key
+# and verifies Signature (RS256), Expiration, Issuer (iss), Token structure
+# Gateway does NOT call Keycloak on every request, Public keys are cached, Refreshed only on rotation
+# realm id/name in Keycloak server is - tesco-dev
 spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/tesco-dev
+
   #webflux:
   #  base-path: /api-gateway
   main:
