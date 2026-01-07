@@ -29,6 +29,9 @@ public class KafkaProducerConfig {
     @Value("${spring.kafka.producer.acks}")
     private String acks;
 
+    @Value("${spring.kafka.producer.retries}")
+    private String retries;
+
 
     @Value("${spring.kafka.producer.properties.enable.idempotence}")
     private String idempotence;
@@ -43,7 +46,7 @@ public class KafkaProducerConfig {
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
         configProps.put(ProducerConfig.CLIENT_ID_CONFIG, "producer-id-place-order"); //a randomly generated UUID as a client ID for tracking the source of requests.
         // Enable retries
-        configProps.put(ProducerConfig.RETRIES_CONFIG, 1); // Retry up to 3 times
+        configProps.put(ProducerConfig.RETRIES_CONFIG, 1); // Retry up to 1 times , usually you should retry up to 3 times
 
         configProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 2000); // wait max 2 seconds
 
@@ -51,7 +54,7 @@ public class KafkaProducerConfig {
         configProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 2000); // 2 seconds - The maximum time the broker has to respond to a single request.
         // The total time allowed to deliver a record, including: retries, batching delays (linger.ms), backoff (retry.backoff.ms)
         // key rule: delivery.timeout.ms must be greater than request.timeout.ms + linger.ms
-        configProps.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 3000); // 5 seconds timeout to deliver a message.
+        configProps.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 3000); // 3 seconds timeout to deliver a message.
 
         //configProps.put("enable.idempotence", true); // it will avoid sending duplicate message
         configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, idempotence); // it will avoid sending duplicate message

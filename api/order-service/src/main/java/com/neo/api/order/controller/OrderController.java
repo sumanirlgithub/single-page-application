@@ -1,5 +1,7 @@
 package com.neo.api.order.controller;
 
+import com.neo.api.order.dto.PurchaseOrderDTO;
+import com.neo.api.order.entity.PurchaseOrder;
 import com.neo.api.order.model.Order;
 import com.neo.api.order.model.OrderRequestPayload;
 import com.neo.api.order.model.OrderResponsePayload;
@@ -12,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,9 +36,14 @@ public class OrderController {
      * Endpoint display order items.
      */
     @GetMapping("/orders")
-    public List<String> getOrderItems(
-            @RequestParam(name = "order-id", required = true) String orderId) {
+    @PreAuthorize("hasRole('ADMIN')")  // only users/clients with role ADMIN can access
+    public PurchaseOrderDTO getOrderItems(
+            @RequestParam(name = "order-id", required = true) String orderId,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Roles") String roles) {
         log.info("Request received from client application");
+        log.info("userId: {}", userId);
+        log.info("roles: {}", roles);
         log.info(message2Property);
         return orderService.getOrderItemsForOrder(orderId);
     }

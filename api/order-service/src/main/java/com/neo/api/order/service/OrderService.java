@@ -3,6 +3,7 @@ package com.neo.api.order.service;
 import com.neo.api.common.enums.OrderStatus;
 import com.neo.api.order.client.InventoryFeignClient;
 import com.neo.api.order.client.InventoryFeignClientAsyncCall;
+import com.neo.api.order.dto.PurchaseOrderDTO;
 import com.neo.api.order.entity.Customer;
 import com.neo.api.order.entity.OrderItem;
 import com.neo.api.order.entity.OutboundEvent;
@@ -60,11 +61,9 @@ public class OrderService {
      * Get the list of Order Items for the Order - Order can have more than one item.
      *
      */
-    public List<String> getOrderItemsForOrder(String orderId) {
+    public PurchaseOrderDTO getOrderItemsForOrder(String orderId) {
         log.info("Retrieve Order items for Order Id: {}", orderId);
-        List<String> items = orderRepository.getOrderItemsForOrder(orderId);
-        log.info("Number of Items Found: {}", items.size());
-        return items;
+        return orderRepository.getOrderDetails(orderId);
     }
 
     public OrderResponsePayload getOrderById(String id) {

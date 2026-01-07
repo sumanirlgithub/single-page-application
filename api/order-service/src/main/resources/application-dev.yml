@@ -94,8 +94,14 @@ spring:
       schema.registry.url: http://192.168.0.143:9021
     bootstrap-servers: localhost:9092,localhost:9093
     producer:
-      acks: all
-      linger-ms: 0
+      acks: all # producer waits for acknowledgments until message is written in all replicas
+      retries: 3 # retry sending message up to 3 times if fails
+      retry-backoff-ms: 500 # Wait 500ms between retries
+      request-timeout-ms: 2000 # 2 seconds - The maximum time the broker has to respond to a single request
+      delivery-timeout-ms: 3000 # 3 seconds maximum timeout Kafka will attempt to deliver a message including retries. delivery.timeout.ms ≥ linger.ms + request.timeout.ms otherwise Producer fails at startup
+      batch:
+        size: 10 # number of messages that the producer will batch together before sending them to the broker
+      linger-ms: 0 # amount of time producer will wait for additional messages before sending the current batch
       properties:
         enable:
           idempotence: true
