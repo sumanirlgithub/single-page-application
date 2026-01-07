@@ -38,8 +38,12 @@ http://localhost:8081/api/hello-world-service/v3/api-docs
 API Gateway GET endpoint for hello-world-service:
 http://localhost:8081/api-gateway/api/hello-world-service/v1/hello-world
 
-API Gateway GET endpoint for order-service:
-http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f96ea57e10196ea58b3440001
+API Gateway GET endpoint for fetching order (order-service):
+http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f9b441eee019b441fde9e0003
+
+API Gateway POST endpoint for creating order (order-service):
+http://localhost:8081/api-gateway/api/v1/orders
+
 
 API Gateway GET endpoint for payment-service:
 http://localhost:8081/api-gateway/api/v1/payment/status
@@ -53,11 +57,12 @@ API Gateway endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=
 5) Start eureka-service-discovery application
 6) Start payment-service application
 7) Start order-service application
-8) start external-tenant-client
+8) Start inventory-service application
+9) start external-tenant-client application
  - Get token endpoint - http://localhost:8083/api/auth/token?realm=tesco-dev
  - copy token send it as Bearer Token with endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f96ea57e10196ea58b3440001
 
-9) Send GET Request through POSTMAN -
+10) Send GET Request through POSTMAN -
     API Gateway endpoint - http://localhost:8081/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001
     (Direct Order Service endpoint - http://localhost:8089/api/order-service/orders?order-id=4028800f9446ce48019446ceea260001)
     If you see the below message in the order-service application console logs -
@@ -69,7 +74,7 @@ API Gateway endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=
     neo.api.gateway.filter.LoggingFilter   : Logging from global pre:
     That means api-gateway-service working and Global filter at api gateway level is working.
 
-10) Send GET Request through POSTMAN - http://localhost:8089/api/order-service/payment-status?paymentNumber=984367801
+11) Send GET Request through POSTMAN - http://localhost:8089/api/order-service/payment-status?paymentNumber=984367801
     - Please note that eureka-service-discovery application must be running only then you will be make a call to payment-service
     - ( order-service and payment-service depends on eureka-service-discovery application - (Discovery pattern)
 
