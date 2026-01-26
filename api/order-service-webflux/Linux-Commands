@@ -1,0 +1,102 @@
+
+# Key	Action These keys work when you are in ESC mode
+h	move left
+l	move right
+j	move down
+k	move up
+0	start of line
+$	end of line
+
+Arrow keys work when you are ESC mode
+
+
+ls            # list files
+ls -l         # detailed listing
+ls -a         # show hidden files
+cd <dir>      # change directory
+cd ~          # go to home
+cd /home/suman01   # go to home
+mkdir ckad-practice
+pwd           # show current path
+# copy and paste file from one location to another
+cp /path/to/source/file /path/to/destination/
+# create a text file named filetext
+touch filetext.text
+
+# Display text or variable value
+echo "Hello, World!"
+
+name="Alice"
+echo "Hello, $name!"
+
+#Viewing Files
+cat file.yaml
+less file.yaml # Use less for large files (q to quit)
+more file.yaml
+
+cat nameoffile # Display file content
+# vi survival commands (exam MUST-know)
+vi file.yaml
+vim file.yaml
+nano file.yaml
+
+# vi survival commands (exam MUST-know)
+i       → insert mode
+o       → create next line where can type text
+Esc     → command mode
+:w      → save
+:q      → quit
+:wq     → save & quit
+:q!     → quit without saving
+
+
+#Copy, Move, Delete Files
+cp a.yaml b.yaml
+mv old.yaml new.yaml
+rm file.yaml
+rm -f * # remove all files from directory where you are
+rm -rf dir/
+
+
+#Searching & Filtering Output (VERY USEFUL)
+grep "nginx" file.yaml # It searches for the word nginx inside file.yaml and prints every line that contains nginx.
+grep -i error logs.txt # It searches for the word error in logs.txt, ignoring case, and prints every line that contains it.
+
+#Redirection & Pipes (IMPORTANT)
+>    # overwrite output
+>>   # append output
+
+**********************
+|    # pipe output - the pipe (|) is used to send the output of one command directly as input to another command.
+e.g.
+ps aux | grep java
+
+ps aux → all running processes
+grep java → filter Java processes
+Output: running Java processes
+**********************************
+
+# Permissions (Rare but possible)
+chmod +x script.sh
+
+# Useful Shortcuts (Keyboard)
+Shortcut	Action
+Ctrl + C	Stop command
+Ctrl + D	Exit shell
+Ctrl + L	Clear screen
+Tab	Auto-complete
+↑	Previous command
+
+🧠 Final advice
+
+If you can:
+
+Open and edit YAML in vi
+
+Redirect kubectl output to files
+
+Use grep & pipes
+
+Navigate folders confidently
+
+👉 You are more than ready for CKAD.

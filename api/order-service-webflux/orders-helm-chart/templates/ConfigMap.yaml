@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config # value for Release.Name is pulled when install helm chart for each env.
+data:
+  SPRING_PROFILES_ACTIVE: prod
+  SERVER_PORT: "8080"
+
+  # Database configuration (non-sensitive)
+  DB_HOST: orders-db.prod.svc.cluster.local
+  DB_PORT: "5432"
+  DB_NAME: orders
+
+  # Application-specific configs
+  ORDER_TIMEOUT_SECONDS: "30"
+  LOG_LEVEL: {{ .Values.logLevel }}   # pull value from values.yaml file

@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-orders # e.g. dev-orders - value for Release.Name is pulled when install helm chart for each env.
+  labels:
+    app: {{ .Values.labels.app }}
+    component: {{ .Values.labels.component }} # e.g. backend
+    env: {{ .Values.env }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.labels.app }} # selector.matchLabels.app must matches Pod labels
+  strategy:
+    #type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0 # No existing Pods are taken down until the new Pod is ready. meaning Update deployment with zero downtime
+      maxSurge: 1 # extra Pods allowed above desired replicas - Kubernetes will run 1 extra Pod temporarily
+  template: # pod template start here.
+    metadata:
+      labels:
+        app: {{ .Values.labels.app }} # this value exactly match with selector.matchLabels used above.
+        component: {{ .Values.labels.component }} # e.g. backend
+        env: {{ .Values.env }}
+    spec:
+      containers:
+        - name: orders
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          envFrom:
+            - configMapRef:
+                name: order-service-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: order-service-secret
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: truststore-volume
+              mountPath: /etc/ssl/truststore
+              readOnly: true
+            - name: orders-storage
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: truststore-volume
+          secret:
+            secretName: order-service-secret
+        - name: orders-storage
+          persistentVolumeClaim:
+            claimName: orders-data
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: {{ .Values.env | quote }}

@@ -1,0 +1,109 @@
+
+Open Powershell
+> wsl
+
+# use short form kubectl
+$ alias k=kubectl
+$ echo "alias k=kubectl" >> ~/.bashrc
+$ k create ns dev
+$ k create ns qa
+$ k create ns prod
+$ k config set-context --current --namespace=dev
+
+$ k get ns # list of namespace
+$ k config get-contexts # current context is marked with * and NAMESPACE column shows the active namespace
+$ k create deployment nginx --image=nginx
+$ k get pods
+
+$ vi nginx-pod.yaml
+:q (for quit editor)
+:q! Press Enter ( for quit editor without saving)
+:wq ( for save)
+
+How to be safe
+CKAD exam graders don’t care if you use arrow keys. The fastest way is to use vi/vim keyboard navigation:
+
+
+Once you master these, you never need arrow keys — it’s actually faster in an exam scenario.
+
+# Practicing YAML, networking, volumes, probes, jobs
+
+# list the available objects in your cluster
+$ kubectl api-resources
+$ kubectl config view
+$ kubectl get pod -w
+$ kubectl get replicaset -w
+$ kubectl describe deploy orders
+# scale out
+$ kubectl scale deploy orders --replicas=2
+# change image
+$ kubectl set image deploy orders nginx=nginx:1.19.8
+# check logs for a pod
+$ kubectl describe pod <pod-name>
+# rollback deployment
+$ kubectl rollout history deploy orders
+$ kubectl rollout history deploy orders --revision=1
+$ kubectl rollout undo deploy orders <image-name> --to-revision=2
+$ kubectl rollout undo deploy orders --to-revision=1
+
+
+# Set the namespace as dev
+$ kubectl config set-context --current --namespace=dev
+$ k get pods | grep Running
+
+# Display only the most recent 20 lines of output in pod nginx
+kubectl logs --tail=20 nginx
+# Show all logs from pod nginx written in the last hour
+kubectl logs --since=1h nginx
+
+$ k get pods | grep nginx
+$ k logs pod-name | less
+$ k describe pod pod-name | grep Image
+
+
+$ k get pods > pods.txt
+$ k create deployment web --image=nginx -n dev --dry-run=client -o yaml > deploy.yaml
+
+# How to deploy install Kubernetes Helm Chart -> Helm Release Name: order-service-dev for environment - dev
+$ helm install order-service-dev ./orders-helm-chart -n dev
+$ helm install order-service-prod ./orders-helm-chart -n prod
+$ helm install order-service-dev ./orders-helm-chart -f values-prod.yaml -n dev
+
+# To view the logs of a previously terminated container in a Pod, web-1 is the pod name and nginx is the container name
+$ kubectl logs web-1 -c nginx --previous
+$ kubectl logs web-1 -c nginx --p
+
+*****************************************************
+
+alias kgp='kubectl get pods'
+alias kgs='kubectl get svc'
+alias kgn='kubectl get ns'
+alias kdp='kubectl describe pod'
+
+Linux commands
+export NS=dev
+
+**************************************************************
+# Checks the manifest locally - Ensures YAML syntax and resource structure are correct
+k apply -f frontend-deploy.yaml --dry-run=client
+
+
+1) # Create a Pod exposing port 80
+$ k run nginx-pod --image=nginx:1.21 --port=80 --restart=Never --dry-run=client -o yaml > nginx-pod.yaml
+$ k apply -f nginx-pod.yaml
+
+2) # Create deployment - It will create a ReplicaSet and a Pod. frontend is a deployment name or app label name
+# --dry-run=client means don’t create resource now. when execute 'apply' that time resource will be created
+$ k create deployment frontend --image=nginx:1.21 -n dev --port=80  --replicas=3 --dry-run=client -o yaml > frontend-deploy.yaml
+$ k apply -f frontend-deploy.yaml
+$ kubectl edit deployment frontend
+
+3) # Scale replicas to 5 (change yaml file manually if not updated)
+$ k scale deployment frontend --replicas=5
+
+4) # Update frontend image to nginx:1.22 and trigger RollingUpdate ((change yaml file manually if not updated)
+$ k set image deployment/frontend nginx=nginx:1.22
+
+5) # Create ConfigMap app-config in namespace qa, LOG_LEVEL=DEBUG, APP_MODE=test
+$ k create configmap app-config -n dev --from-literal=APP_MODE=test --from-literal=LOG_LEVEL=DEBUG --dry-run=client -o yaml > app-config.yaml
+$ k apply -f app-config.yaml
