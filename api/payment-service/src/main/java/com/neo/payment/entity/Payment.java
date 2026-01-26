@@ -14,14 +14,15 @@ import java.util.UUID;
 @Entity
 @Table(name = "PAYMENT")
 public class Payment {
+
     @Id
     @GeneratedValue(generator = "UUID")
     @NotNull
-    @Column(name = "PAYMENT_ID")
+    @Column(name = "PAYMENT_ID", columnDefinition = "BINARY(16)")
     private UUID paymentId;
 
     @Column(name = "CARD_NUMBER")
-    private String cardNumber;
+    private Long cardNumber;
 
     @Column(name = "CARD_HOLDER")
     private String cardHolder;

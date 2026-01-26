@@ -1,5 +1,7 @@
 package com.neo.payment.model.request;
 
+import com.neo.payment.dto.PaymentInsightRequest;
+import com.neo.payment.dto.PaymentInsightRequestOrg;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,7 +17,7 @@ class PaymentStatusReqTest {
 
     @Test
     void test_fields() {
-        PaymentStatusReq req = new PaymentStatusReq();
+        PaymentInsightRequestOrg req = new PaymentInsightRequestOrg();
         req.setUetrNumbers(Collections.emptyList());
 
         assertEquals(0, req.getUetrNumbers().size());
@@ -23,11 +25,11 @@ class PaymentStatusReqTest {
 
     @Test
     void test_equals() {
-        PaymentStatusReq req1 = new PaymentStatusReq(Collections.emptyList());
+        PaymentInsightRequestOrg req1 = new PaymentInsightRequestOrg(Collections.emptyList());
         assertEquals(req1, req1);
         assertNotEquals(req1, new Object());
 
-        PaymentStatusReq req2 = PaymentStatusReq.builder()
+        PaymentInsightRequestOrg req2 = PaymentInsightRequestOrg.builder()
                 .uetrNumbers(Collections.emptyList())
                 .build();
         assertEquals(req1, req2);
@@ -42,12 +44,12 @@ class PaymentStatusReqTest {
 
     @Test
     void test_hasCode() {
-        assertNotEquals(0, new PaymentStatusReq().hashCode());
+        assertNotEquals(0, new PaymentInsightRequest().hashCode());
     }
 
     @Test
     void test_toString() {
-        assertNotEquals(0, new PaymentStatusReq().toString().length());
+        assertNotEquals(0, new PaymentInsightRequest().toString().length());
     }
 
 }

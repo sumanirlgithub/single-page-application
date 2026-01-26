@@ -3,9 +3,10 @@ package com.neo.payment.service;
 import com.neo.api.common.enums.PaymentStatus;
 import com.neo.payment.connect.client.AuthFeignClient;
 import com.neo.payment.connect.response.ConnectAuthResponse;
+import com.neo.payment.dto.PaymentInsightRequest;
+import com.neo.payment.dto.PaymentInsightRequestOrg;
 import com.neo.payment.entity.Payment;
 import com.neo.payment.exception.PaymentServiceException;
-import com.neo.payment.model.request.PaymentStatusReq;
 import com.neo.payment.model.response.PaymentStatusRes;
 import com.neo.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +58,7 @@ public class PaymentService {
      * @param paymentStatusReq
      * @return PaymentStatusRes
      */
-    public List<PaymentStatusRes> getPaymentStatus(PaymentStatusReq paymentStatusReq) {
+    public List<PaymentStatusRes> getPaymentStatus(PaymentInsightRequestOrg paymentStatusReq) {
         long processingStartTime = System.currentTimeMillis();
         log.info("Received request for getPaymentStatus: paymentStatusRequestPayload: {}", paymentStatusReq);
         if (CollectionUtils.isNotEmpty(paymentStatusReq.getUetrNumbers()) && paymentStatusReq.getUetrNumbers().size() > 5) {

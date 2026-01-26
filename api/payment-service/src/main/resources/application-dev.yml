@@ -1,5 +1,5 @@
 server:
-  port: 8082
+  port: 8084
   servlet:
     #contextPath: /payment-service/api/payment
     contextPath: /api/v1/payment
@@ -20,6 +20,17 @@ server:
   error:
    include-message: always
    include-binding-error: always
+
+poller:
+  #auto-refresh-pmt-status-cron: 0 0/30 * * * * # runs at 00 and 30 minutes of every hour
+  auto-refresh-pmt-status-cron: 0 0/05 * * * *
+
+job:
+  delay:
+    ms: 120000 # 2 mins
+
+feature:
+  pmt-insight-flag: true
 
 eureka:
   client:
@@ -107,6 +118,9 @@ resilience4j:
           - java.lang.RuntimeException
 spring:
   application: 'payment-service'
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
   security:
     oauth2:
       resourceserver:
@@ -116,7 +130,7 @@ spring:
   kafka:
     properties:
       schema.registry.url: http://192.168.0.143:9021
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: localhost:9092,localhost:9093
     producer:
       acks: all
       linger-ms: 0
@@ -141,6 +155,11 @@ spring:
                 type: com.neo.api.common.order.event.OrderEvent
     listener:
       ack-mode: manual
+    admin:
+      enabled: false
+      bootstrap-servers: localhost:9092,localhost:9093 # Forces KafkaAdmin to only use bootstrap servers, avoids trying internal network addresses that are unreachable.
+      auto-create: false
+      fail-fast: false
 
   cloud:
     compatibility-verifier:
@@ -151,29 +170,48 @@ spring:
   sql:
     init:
       mode: never
+
+  # First start MYSQL DB instance on your local server - located at windows/system services
   datasource:
-    hikari:
-      allow-pool-suspension: true
-    url: jdbc:h2:~/test
-    username: SA
-    password:
-    driverClassName: org.h2.Driver
+    url: jdbc:mysql://localhost:3306/sumandb
+    username: root
+    password: root
+    driverClassName: com.mysql.jdbc.Driver
     defaultSchema:
-    maxPoolSize: 10
+    maxPoolSize: 20
     hibernate:
-      hbm2ddl.method: create-drop
+      generate_statistics: true
+      hbm2ddl.method: update
       show_sql: true
       format_sql: true
+      dialect: org.hibernate.dialect.MySQLDialect
   jpa:
-    properties:
-      hibernate:
-        temp:
-          use_jdbc_metadata_defaults: false
-        dialect: org.hibernate.dialect.H2Dialect
-    hibernate:
+    #open-in-view: true
+    generate-ddl: true
+
+  #datasource:
+  #  hikari:
+  #    allow-pool-suspension: true
+  #  url: jdbc:h2:~/test
+  #  username: SA
+  #  password:
+  #  driverClassName: org.h2.Driver
+  #  defaultSchema:
+  #  maxPoolSize: 10
+  #  hibernate:
+  #   hbm2ddl.method: create-drop
+  #    show_sql: true
+  #    format_sql: true
+  #jpa:
+  #  properties:
+  #    hibernate:
+  #      temp:
+  #        use_jdbc_metadata_defaults: false
+  #      dialect: org.hibernate.dialect.H2Dialect
+  #  hibernate:
       #ddl-auto: create
-    ddl-auto: update
-    database-platform: org.hibernate.dialect.H2Dialect
+  #  ddl-auto: update
+  #  database-platform: org.hibernate.dialect.H2Dialect
 
 # link to access the swagger page - https://localhost:8088/payment-service/api/payment/swagger-ui.html
 springdoc:
@@ -182,7 +220,6 @@ springdoc:
     use-root-path: true
   packagesToScan: 'com'
   pathsToMatch: '/**'
-
 
 connect:
   service:

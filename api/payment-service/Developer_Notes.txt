@@ -1,11 +1,23 @@
+
 -Dspring.profiles.active=dev
+
+# Start MySql database instance - Services > MySQL80
+# MySQL Workbench
+# POSTMAN
+
+#To enable KAFKA
+remove   autoconfigure:
+           exclude:
+             - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
 
 
 Endpoint:
-https://localhost:8088/api/v1/payment/status
+
+https://localhost:8084/api/v1/payment/status
+
 
 # link to access the swagger page
-https://localhost:8088/payment-service/api/payment/swagger-ui.html
+https://localhost:8084/payment-service/api/payment/swagger-ui.html
 
 Keycloak
 To start Keycloak server- download and run docker image-

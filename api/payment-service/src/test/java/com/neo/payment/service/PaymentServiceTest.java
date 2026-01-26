@@ -10,8 +10,9 @@ import com.neo.payment.connect.client.AuthFeignClient;
 import com.neo.payment.connect.response.ConnectAuthResponse;
 import com.neo.payment.connect.response.ConnectPaymentStatusResponse;
 import com.neo.payment.connect.response.PaymentTransaction;
+import com.neo.payment.dto.PaymentInsightRequest;
+import com.neo.payment.dto.PaymentInsightRequestOrg;
 import com.neo.payment.exception.PaymentServiceException;
-import com.neo.payment.model.request.PaymentStatusReq;
 import com.neo.payment.model.response.PaymentStatusRes;
 
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Arrays;
@@ -40,7 +40,7 @@ public class PaymentServiceTest {
 
     @Test
     void testGetPaymentStatus_ThrowPaymentException() {
-        PaymentStatusReq request = new PaymentStatusReq(
+        PaymentInsightRequestOrg request = new PaymentInsightRequestOrg(
                 Arrays.asList("123456", "12345", "1234", "123", "12", "1"));
 
         assertThrows(PaymentServiceException.class, () -> {
@@ -60,7 +60,7 @@ public class PaymentServiceTest {
 
     @Test
     void testGetPaymentStatus_Success_200() throws Exception {
-        PaymentStatusReq request = new PaymentStatusReq(
+        PaymentInsightRequestOrg request = new PaymentInsightRequestOrg(
                 Arrays.asList("123456"));
         ConnectAuthResponse authResponse = new ConnectAuthResponse();
         authResponse.setDecryptedContent("{\"token\":{ \"token_type\":Bearer\", \"access_token\":test\", \"expire_in:\"1800, \"scope\":\"/authenticationservices/v1\" } }");

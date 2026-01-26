@@ -30,11 +30,11 @@ public class FeignClientConfig {
     private String trustStorePass;
 
     @Value("${citiconnect.payment.service.url:test}")
-    private String citiConnectPaymentUrl;
+    private String paymentUrl;
 
     @Bean
     public Client feignClient() {
-        log.info("Retrieve citiConnectPaymentUrl from environment : " + citiConnectPaymentUrl);
+        log.info("Retrieve PaymentUrl from environment : " + paymentUrl);
 
         Client trustSslSockets =  new Client.Default(
                 null,

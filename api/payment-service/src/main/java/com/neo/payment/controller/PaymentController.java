@@ -1,7 +1,7 @@
 package com.neo.payment.controller;
 
 import com.neo.payment.common.JwtTokenUtil;
-import com.neo.payment.model.request.PaymentStatusReq;
+import com.neo.payment.dto.PaymentInsightRequest;
 import com.neo.payment.model.response.PaymentStatusRes;
 import com.neo.payment.service.PaymentService;
 import jakarta.validation.Valid;
@@ -32,7 +32,7 @@ public class PaymentController {
     @CrossOrigin(origins = "http://localhost:4209")
     public ResponseEntity<List<PaymentStatusRes>> getPaymentStatus(
             @Valid
-            @RequestBody PaymentStatusReq paymentStatusReq,
+            @RequestBody PaymentInsightRequest paymentStatusReq,
             @RequestHeader("Authorization") String token) {
         //) {
         // Validate the JWT token
