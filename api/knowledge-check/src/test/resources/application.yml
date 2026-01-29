@@ -1,0 +1,183 @@
+# dev configuration for swift workflow application
+server:
+  port: 8089
+  servlet:
+    contextPath: /api/order-service
+  error:
+    include-message: always
+    include-binding-error: always
+
+# start activemq broker from command prompt - C:\apache-activemq-6.0.1\bin>activemq start
+# we can access the AvtiveMQ console using http://localhost:8161
+activemq:
+  broker-url: tcp://localhost:61616?jms.redeliveryPolicy.maximumRedeliveries=1
+  user: admin
+  password: admin
+  packages:
+    trust-all: true
+
+order:
+  queue: order-queue
+
+atis:
+  nonSensitiveEnvironment: Y
+  role:
+    app-name:
+  nasmountpath: /oneatnas
+  file-operation-api:
+    base-url: https://nsroot.net:8071/atisapi/file-operation
+
+# first run kafka kraft docker container (image) using docker composer file - KRaft-single-broker.yml
+#command - docker compose -f KRaft-single-broker.yml up
+# Kafka ui - http://localhost:9999/
+kafka:
+  topics:
+    order: ORDER-TOPIC
+    partitions: 3
+    replication:
+      factor: 1
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.SecurityAutoConfiguration
+  kafka:
+    bootstrap-servers: localhost:9092
+    registry:
+      url: http://192.168.0.143:9021
+    #producer:
+      #key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      #value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  #datasource:
+  #  url: jdbc:h2:~/test
+  #  driverClassName: org.h2.Driver
+  #  username: SA
+  #  password:
+  #jpa:
+  #  hibernate:
+  #    ddl-auto: create
+  #    show_sql: true
+  #    format_sql: true
+  #  properties:
+  #    hibernate:
+  #      dialect: org.hibernate.dialect.H2Dialect
+
+  # First start MYSQL DB instance on your local server - located at windows/system services
+  jpa:
+    #open-in-view: true
+    generate-ddl: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/sumandb
+    username: root
+    password: root
+    driverClassName: com.mysql.jdbc.Driver
+    defaultSchema:
+    maxPoolSize: 20
+    hibernate:
+      generate_statistics: true
+      hbm2ddl.method: update
+      show_sql: true
+      format_sql: true
+      dialect: org.hibernate.dialect.MySQLDialect
+
+logging:
+  level:
+    com:
+      atis:
+        api: DEBUG
+    org:
+      hibernate:
+        stat: DEBUG
+        SQL: DEBUG
+        type: DEBUG
+
+oneaandt:
+  generic-poller:
+    poller-cron: 0 0/5 0-23 * * 1-7
+  pricing-supplement:
+    atis-locationL: //SD-E501/scanfile/_ATISPDFFILES
+  term-sheet:
+    atis-locationL: //atisdev.nam.net/termsheet/
+
+idp:
+  service:
+    client:
+      id: ${IDP_CLIENT_ID:clientId}
+      secret: ${IDP_CLIENT_SECRET:clientSecret}
+    url: ${IDP_SERVICE_URL:idpUrl}
+
+inventory:
+  service:
+    url: http://localhost:8088/api/inventory-service
+
+auth:
+  sslcert-truststore: classpath:truststore.jks
+
+payment:
+  queue: payment-queue
+  ssl:
+    #trust-store: ${PAYMENT_CLIENT_TRUSTSTORE}
+    trust-store: classpath:truststore.tts.sandbox.api.citigroup.net.jks
+    trust-store-password: Passw0rd1
+  service:
+    connection-timeout: 1000
+    #      #url: ${CITICONNECT_PAYMENT_URL}
+    url: https://localhost:8088/payment-service/api/payment
+    url-insight-status: https://localhost:8088/payment-service/api/payment/status
+    auth:
+      #      #url: ${CITICONNECT_AUTH_URL}
+      url: https://nsroot.net:8071/atis/api/file-operation
+      # client-id: ${CITICONNECT_PAYMENT_CLIENT_ID}
+      client-id:
+        # client-secret: ${CITICONNECT_PAYMENT_CLIENT_SECRET}
+      client-secret: test
+    #  jks: classpath:keystore.jks
+    #jks: ${PAYMENT_SERVER_KEYSTORE}
+    #  jks-password: Password1
+    #  http-client:
+    #    proxy:
+    #      server:
+    #        port: 8080
+
+    #client:
+    #  jks: classpath:truststore.jks
+    #jks: ${PAYMENT_CLIENT_TRUSTSTORE}
+    #  jks-password: Password1
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      myCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 5 # slidingWindowSize: Determines how many calls are monitored to calculate the failure rate.
+        minimumNumberOfCalls: 3
+        permittedNumberOfCallsInHalfOpenState: 2
+        waitDurationInOpenState: 2s
+      inventoryCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5 # slidingWindowSize: Determines how many calls are monitored to calculate the failure rate.
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 3
+        permittedNumberOfCallsInHalfOpenState: 2
+        waitDurationInOpenState: 2s
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+  #timeout properties - maximum time that a particular operation is allowed to execute
+  #timelimiter:
+  #  configs:
+  #    values:
+  #      timeout-duration: 4s
+  #  instances:
+  #    inventoryTimeLimiter: # Unique name for TimeLimiter
+  #      base-config: values
+  #retry properties
+  retry:
+    configs:
+      inventoryRetry:
+        max-attempts: 3
+        wait-duration: 2s
+
+
+

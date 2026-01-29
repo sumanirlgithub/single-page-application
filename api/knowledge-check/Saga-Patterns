@@ -1,0 +1,322 @@
+
+Saga design pattern in Spring Boot with Example
+https://medium.com/@vino7tech/saga-design-pattern-in-spring-boot-with-example-6e44bf3e7989
+
+The Saga design pattern in Spring Boot is essential for maintaining data consistency across distributed microservices in a long-running transaction scenario. Sagas break down a large transaction into smaller local transactions, coordinated using either orchestration or choreography.
+
+The Saga Pattern is a microservice transaction management pattern used to maintain data consistency across multiple services without using distributed transactions (like XA transactions), which are slow and hard to scale.
+
+Instead of a single ACID transaction, a saga is a sequence of local transactions.
+Each local transaction publishes an event or command that triggers the next transaction in the saga.
+If any transaction fails, the saga executes compensating transactions to undo the changes.
+
+What is the Saga Pattern?
+Saga = A sequence of local transactions.
+Each step updates data and publishes an event or waits for a command to trigger the next step.
+If one step fails, compensating transactions are triggered to undo the previous steps.
+
+Two Types of Sagas
+
+
+Orchestrator :
+A central controller (Orchestrator) tells each service what to do and when.
+It manages the execution order of steps and handles failures and compensations
+
+The orchestrator decides the order:
+
+Order Service → [Orchestrator]
+               → Inventory Service
+               → Payment Service
+               → Shipping Service
+Start Order
+Call Inventory → wait for result
+Call Payment → wait for result
+Call Shipping
+Choreography :
+There is no central coordinator. Each service reacts to events published by other services, and decides independently what to do.
+
+Order Service → emits OrderCreatedEvent
+→ Inventory Service listens and emits InventoryReservedEvent
+→ Payment Service listens and emits PaymentCompletedEvent
+→ Shipping Service listens and ships
+Why Sagas?
+Microservices manage their own databases.
+Distributed transactions (2PC) are not scalable or practical.
+Each service must succeed/fail independently but still maintain overall system integrity.
+Required Tools
+Spring Boot
+Spring Cloud Stream (for messaging)
+Kafka or RabbitMQ
+(Optional) Camunda / Axon Framework for orchestration
+JPA or JDBC for database operations
+Libraries That Help
+
+Tools & Libraries for Sagas in Spring Boot
+
+Example: Order Service Saga (Orchestration)
+Scenario:
+You’re building an e-commerce system with these services:
+
+Order Service
+Inventory Service
+Payment Service
+
+Flow:
+Order is created.
+Inventory is reserved.
+Payment is processed.
+If any step fails, previous steps are rolled back via compensation.
+Project Structure
+saga-demo/
+│
+├── order-service
+├── inventory-service
+├── payment-service
+└── saga-orchestrator (optional for orchestration)
+Orchestration Flow Using REST + Kafka
+Order Service — Sends event
+@Service
+public class OrderService {
+    @Autowired private KafkaTemplate<String, String> kafkaTemplate;
+
+    public void placeOrder(Order order) {
+        // Save order to DB
+        orderRepository.save(order);
+        // Send event to Inventory Service
+        kafkaTemplate.send("order-created-topic", order.getId().toString());
+    }
+}
+2. Inventory Service — Listens to event and responds
+
+@KafkaListener(topics = "order-created-topic")
+public void reserveInventory(String orderId) {
+    try {
+        // Reserve items
+        inventoryService.reserve(orderId);
+        kafkaTemplate.send("inventory-reserved-topic", orderId);
+    } catch (Exception ex) {
+        kafkaTemplate.send("inventory-failed-topic", orderId);
+    }
+}
+3. Payment Service
+
+@KafkaListener(topics = "inventory-reserved-topic")
+public void processPayment(String orderId) {
+    try {
+        paymentService.charge(orderId);
+        kafkaTemplate.send("payment-success-topic", orderId);
+    } catch (Exception ex) {
+        kafkaTemplate.send("payment-failure-topic", orderId);
+    }
+}
+4. Compensation Handling
+If payment fails, emit an event back to Inventory and Order to roll back.
+
+@KafkaListener(topics = "payment-failure-topic")
+public void rollbackInventory(String orderId) {
+    inventoryService.release(orderId);
+    orderService.cancel(orderId);
+}
+Compensation Method Example
+public void release(String orderId) {
+    // Increase stock
+    Inventory inv = inventoryRepo.findByOrderId(orderId);
+    inv.setQuantity(inv.getQuantity() + 1);
+    inventoryRepo.save(inv);
+}
+Benefits of Saga in Spring Boot
+Avoids distributed transactions (no 2PC)
+More scalable and resilient
+Supports compensating actions on failure
+Saga Workflow — High-Level Flow
+Let’s take a real-world example:
+User places an order → Inventory is reserved → Payment is processed
+If any step fails, previous steps are undone.
+
+Steps:
+Order Service creates an order (Local Transaction).
+It sends an event/command to Inventory Service.
+Inventory Service reserves items (Local Transaction).
+It sends a message to Payment Service.
+Payment is processed (Local Transaction).
+On success, send Order Completed event.
+If any step fails → send rollback events to previous services (Compensation).
+Saga Flow Diagram — Orchestration
+            ┌──────────────────────┐
+            │     Order Service    │
+            │  createOrder()       │
+            └────────┬─────────────┘
+                     │
+                     ▼
+            ┌──────────────────────┐
+            │  Saga Orchestrator   │
+            └────────┬─────────────┘
+                     ▼
+        ┌──────────────────────────────┐
+        │    Inventory Service         │
+        │  reserveInventory()          │
+        └────────┬──────────────┬──────┘
+                 │              │
+                 ▼              ▼
+      ┌────────────────┐    ┌────────────────┐
+      │ send to Payment│    │ cancelOrder()  │
+      └────────────────┘    └────────────────┘
+                 │
+                 ▼
+        ┌──────────────────────────────┐
+        │      Payment Service         │
+        │  chargeCustomer()            │
+        └────────┬──────────────┬──────┘
+                 │              │
+                 ▼              ▼
+       ┌────────────────┐   ┌────────────────┐
+       │ orderSuccess() │   │ refundInventory│
+       └────────────────┘   └────────────────┘
+Saga Flow Diagram — Choreography
+[Order Service] --(OrderCreatedEvent)--> [Inventory Service]
+[Inventory Service] --(InventoryReservedEvent)--> [Payment Service]
+[Payment Service] --(PaymentSuccessfulEvent)--> [Order Service]
+
+Compensation Events (on failure):
+
+[Inventory Service] --(InventoryFailedEvent)--> [Order Service]
+[Payment Service] --(PaymentFailedEvent)--> [Inventory Service]
+In choreography, there is no central orchestrator — each service listens for events and decides what to do next.
+
+A complete working example of the Saga Pattern (Choreography-based) using Spring Boot and Apache Kafka with three microservices:
+
+Microservices Involved
+order-service — Starts the saga
+inventory-service — Reserves stock
+payment-service — Handles payment
+Kafka — Used as the event bus
+Each service has:
+Its own Spring Boot app
+Own database
+Kafka producer/consumer
+Compensation logic for rollback
+Project Structure
+saga-choreography-demo/
+├── order-service
+├── inventory-service
+├── payment-service
+└── docker-compose.yml (for Kafka + Zookeeper)
+When to Use Saga
+
+Event Flow Summary
+1. order-service → sends OrderCreatedEvent
+2. inventory-service → listens OrderCreatedEvent → sends InventoryReservedEvent
+3. payment-service → listens InventoryReservedEvent → sends PaymentCompletedEvent
+
+If payment fails:
+4. payment-service → sends PaymentFailedEvent → inventory-service → releases stock
+1. Docker Compose (Kafka + Zookeeper)
+docker-compose.yml
+
+version: '3'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.2
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.2
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+2. Common Kafka Config (shared by all)
+KafkaConfig.java
+
+@Configuration
+public class KafkaConfig {
+    @Bean
+    public ProducerFactory<String, Object> producerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+
+    @Bean
+    public KafkaTemplate<String, Object> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
+    }
+}
+3. order-service
+Dependencies
+spring-boot-starter-web
+spring-kafka
+spring-data-jpa
+H2 DB
+OrderController.java
+@RestController
+@RequestMapping("/orders")
+@RequiredArgsConstructor
+public class OrderController {
+
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final OrderRepository orderRepository;
+
+    @PostMapping
+    public ResponseEntity<?> createOrder(@RequestBody Order order) {
+        order.setStatus("CREATED");
+        orderRepository.save(order);
+        kafkaTemplate.send("order-created-topic", new OrderCreatedEvent(order.getId(), order.getProductId()));
+        return ResponseEntity.ok("Order Created");
+    }
+}
+OrderCreatedEvent.java
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class OrderCreatedEvent {
+    private Long orderId;
+    private String productId;
+}
+inventory-service
+
+Kafka Listener
+
+@KafkaListener(topics = "order-created-topic", groupId = "inventory")
+public void handleOrderCreated(OrderCreatedEvent event) {
+    boolean stockAvailable = inventoryService.reserve(event.getProductId());
+    if (stockAvailable) {
+        kafkaTemplate.send("inventory-reserved-topic", new InventoryReservedEvent(event.getOrderId()));
+    } else {
+        kafkaTemplate.send("inventory-failed-topic", new InventoryFailedEvent(event.getOrderId()));
+    }
+}
+payment-service
+
+Kafka Listener
+
+@KafkaListener(topics = "inventory-reserved-topic", groupId = "payment")
+public void handleInventoryReserved(InventoryReservedEvent event) {
+    try {
+        paymentService.charge(event.getOrderId());
+        kafkaTemplate.send("payment-completed-topic", new PaymentCompletedEvent(event.getOrderId()));
+    } catch (Exception e) {
+        kafkaTemplate.send("payment-failed-topic", new PaymentFailedEvent(event.getOrderId()));
+    }
+}
+Compensation Handling
+
+In inventory-service
+
+@KafkaListener(topics = "payment-failed-topic", groupId = "inventory")
+public void handlePaymentFailed(PaymentFailedEvent event) {
+    inventoryService.release(event.getOrderId());
+}
+Kafka Topics Summary
+
+Testing Flow
+Send a POST /orders request to order-service.
+It triggers an OrderCreatedEvent → Inventory → Payment.
+On failure, compensation runs.
+Monitor logs or DBs to see how the flow evolves.

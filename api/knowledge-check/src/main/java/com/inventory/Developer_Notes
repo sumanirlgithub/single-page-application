@@ -1,0 +1,11 @@
+mvn test
+mvn compile exec:java -Dexec.mainClass="inventory.Main"
+
+#Build the JAR file:
+mvn clean package
+
+#Build the Docker image:
+docker build -t simple-inventory .
+
+#Run the container:
+docker run -it simple-inventory
