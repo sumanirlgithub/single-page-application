@@ -1,0 +1,11 @@
+server:
+ servlet:
+  context-path: /configuration-service
+ port: 8888
+management: 
+ security:
+  enabled: false
+
+spring:
+ application:
+  name: configuration-service

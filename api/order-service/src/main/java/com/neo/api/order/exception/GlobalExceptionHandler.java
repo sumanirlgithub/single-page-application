@@ -1,6 +1,7 @@
 package com.neo.api.order.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,12 @@ public class GlobalExceptionHandler extends  ResponseEntityExceptionHandler {
 //        return handleExceptionInternal(ex, new ErrorDetail(ex.getMessage()),
 //                new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);
 //    }
+
+    @ExceptionHandler(EmptyResultDataAccessException.class)
+    public ResponseEntity<String> handleEmptyResult(EmptyResultDataAccessException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Resource not found");
+    }
 
     @ExceptionHandler(value = {IllegalArgumentException.class, IllegalStateException.class})
     protected ResponseEntity<Object> handleConflict(

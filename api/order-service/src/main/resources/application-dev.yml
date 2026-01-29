@@ -188,6 +188,8 @@ order:
 
 logging:
   level:
+    org.springframework.security.web.FilterChainProxy: DEBUG
+    org.springframework.security.oauth2.server.resource: DEBUG
     com:
       atis:
         api: DEBUG

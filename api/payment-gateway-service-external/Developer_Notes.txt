@@ -1,3 +1,20 @@
+
+
+# start configuration-service
+# start eureka-service-registry
+# start Docker desktop
+# start redis docker container - docker start redis
+
+POST - http://localhost:8086/api/payment-gateways-service/payments/status
+
+{
+
+  "uetrNumbers" : [1436517454492, 1436517476993]
+}
+
+
+************************************************************************************
+
 GIT HUB remote repository - https://github.com/sumanirlgithub/single-page-application
 maven VM option
 -Dspring.profiles.active=dev -Djavax.net.ssl.trustStore=C:/projects/ssl_certificate/truststore.payment.dev.jks

@@ -81,7 +81,7 @@ spring:
         - id: payment-service
           predicates:
             - Path=/api-gateway/api/v1/payment/**
-          uri: https://localhost:8082
+          uri: https://localhost:8084
           filters:
             - StripPrefix=1
 

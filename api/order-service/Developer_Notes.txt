@@ -2,7 +2,23 @@ GIT HUB remote repository - https://github.com/sumanirlgithub/single-page-applic
 maven VM option
 -Dspring.profiles.active=dev -Djavax.net.ssl.trustStore=C:/projects/ssl_certificate/truststore.payment.dev.jks
 
+POSTMAN
+MySQL Workbench
+
 # Start MySql database instance - Services > MySQL80
+# Start Docker Service  - Services > Docker Desktop Service
+# Start Docker Desktop (Docker Engine)
+PowerShell->
+# docker start redis
+# docker run -p 8080:8080 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:26.2.5 start-dev
+cd C:\projects\git-repos\citi-application\api\order-service\docker\kafka-kraft-single-broker\docker-compose-file-confluentic
+# docker compose up -d -> Re-start docker container for KAFKA in detached (background) mode
+---------->
+if kafka container is not starting due to port conflict then do this
+docker ps -a | findstr 8082
+docker stop <id>
+docker rm <id>
+----------------->
 Database Details
 database name: sumandb
 Tables: PUR_ORDER, ORDER_ITEM
@@ -10,11 +26,18 @@ Tables: PUR_ORDER, ORDER_ITEM
 complete end-to-end order → payment → inventory → notification architecture
 
 **********************************************************************
-REST Endpoint:
+REST Endpoints:
+
+Start external-tenant-client application
+  - POST Token endpoint - http://localhost:8083/api/auth/token?realm=tesco-dev (REST Endpoint to get a token from Keycloak server)
+  -  Copy token and send it as Bearer Token to (GET) endpoint - http://localhost:8081/api-gateway/api/v1/orders?order-id=4028800f9b993a15019b995045b70003
+  - Copy token and send it as Bearer Token to (POST) endpoint http://localhost:8081/api-gateway/api/v1/orders
+
 GET with Query Params: http://localhost:8089/api/v1/orders?order-id=4028800f9446ce48019446ceea260001
 
 #ToDo Idempotency-Key should be sent in the HTTP request header, so backend api can check the Idempotency-Key and do not process duplicate order
 POST: http://localhost:8089/api/v1/orders
+
 
 # Start configuration-service application
 
@@ -28,17 +51,23 @@ Kafka Producer Listener can be registered to log the failure messages.
 #start docker image for kafka broker - order-service will create an order and then send order event to kafka topic.
 # The order event will be processed by payment-service
 Start Docker Desktop (Docker Engine)
+PowerShell->
 cd C:\projects\git-repos\citi-application\api\order-service\docker\kafka-kraft-single-broker\docker-compose-file-confluentic
 ✅ Correct working configuration (KRaft, 2 brokers)
 Step 1: Generate a cluster ID (do this once)
 docker run --rm confluentinc/confluent-local:7.4.1 kafka-storage random-uuid
 
+docker run confluentinc/confluent-local:7.4.1 kafka-storage random-uuid
+
+docker ps
+docker compose up -d -> Re-start docker container for KAFKA in detached (background) mode
 docker container ls
 docker container ls -a
 docker stop <container-id>
 docker compose down -v
+
+
 docker compose up -> creates and starts containers
-docker compose up -d -> Re-start docker container in detached (background) mode
 docker logs broker1
 
  docker pause broker1
@@ -57,6 +86,7 @@ docker start broker1
 Run Redis server locally from PowerShell using docker -
 docker run --name redis -p 6379:6379 redis
 docker run -d --name redis -p 6379:6379 redis:latest
+
 
 #Start the existing Redis container
 docker start redis

@@ -5,6 +5,8 @@ http://localhost:8080/
 username: admin
 password: admin
 
+Update client-secret in application-dev.yml by copying Client Secret from http://localhost:8080/admin/master/console/#/tesco-dev/clients/1efd2329-f5d6-419b-9b4e-a3a926602b9f/credentials
+
 Securing Spring Boot with Keycloak
 https://medium.com/@wahyubagus1910/securing-spring-boot-with-keycloak-b352f05575f2
 

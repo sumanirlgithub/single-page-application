@@ -64,9 +64,8 @@ public class PaymentGatewayClient {
     )
     public Mono<Void> callPaymentGatewayExternalUsingWebFluxPureReactiveAsync(
             List<PaymentInsightRequest> requests) {
-
         return Flux.fromIterable(requests)
-                .flatMap(this::callPaymentGateway, 5)
+                .flatMap(this::callPaymentGateway, 5)// 5 is the concurrency limit. It tells reactor - Starts 5 WebClient calls, Waits until one completes, Starts the 6th. Always keeps ≤ 5 in-flight calls. Think of it like a semaphore or connection poo
                 .flatMap(this::savePaymentStatusInDbReactive)
                 .doOnNext(p -> log.info("Saved payment {}", p.getPaymentId()))
                 .then();

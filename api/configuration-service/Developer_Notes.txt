@@ -1,0 +1,42 @@
+maven VM option
+-Dspring.profiles.active=dev,native
+
+***********************************************************
+Spring Cloud Config Server Setup:
+Step-1 - Add the dependency:
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-config-server</artifactId>
+            <version>4.2.1</version>
+        </dependency>
+
+Step 2- Add @EnableConfigServer in Spring Boot Application file - ConfigurationServiceApplication.java
+
+Step 3 - Specify configuration-service url in order-service application-dev.yml
+    spring:
+      config:
+        import: configserver:http://localhost:8888/configuration-service
+Step 4 - You can now use the property defined in configuration service in order-service like @Value("${message2}")
+****************************************************************
+
+
+Using Spring Cloud Config Without Git:
+File System
+Spring Cloud Config provides support for using a file system as a configuration source.
+To enable this feature, we have to specify the following value in the config server’s application.properties file:
+
+spring.cloud.config.server.native.search-locations=resources/other.properties
+Copy
+By default, the search location assumes a classpath resource. If we want to use any arbitrary file, we simply include a file resource prefix:
+
+spring.cloud.config.server.native.search-locations=file:///external/path/other.properties
+Copy
+In addition to this property, the config server needs to run with the native profile enabled:
+
+-Dspring.profiles.active=native
+
+
+**************************************************************
+Error - If you are using the git profile, you need to set a Git URI in your configuration.
+If you have set spring.cloud.config.server.bootstrap=true, you need to use a composite configuration.
+Resolution: delete .iml file and restart intellij with Invalidate Caches

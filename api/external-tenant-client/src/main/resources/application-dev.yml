@@ -15,7 +15,7 @@ keycloak:
   #get-token-url: http://localhost:8080/realms/tesco-dev/protocol/openid-connect/token
   base-url: http://localhost:8080
   client-id: tesco-api-client
-  client-secret: vCUjvzEcaEIXDVVxyqQkHFudQN8PCfL1
+  client-secret: Ayt2mxIngJYqjE8JzY3RCnBoP0U5Tq3a
 
 spring:
   webflux:

@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.ResponseEntity;
+//import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,7 +37,7 @@ public class OrderController {
      * Endpoint display order items.
      */
     @GetMapping("/orders")
-    @PreAuthorize("hasRole('ADMIN')")  // only users/clients with role ADMIN can access
+   @PreAuthorize("hasRole('admin')")  // only users/clients with role admin (created in Keycloak) can access
     public PurchaseOrderDTO getOrderItems(
             @RequestParam(name = "order-id", required = true) String orderId,
             @RequestHeader("X-User-Id") String userId,
@@ -58,6 +59,7 @@ public class OrderController {
      * Endpoint save order items.
      */
     @PostMapping("/orders")
+    @PreAuthorize("hasRole('admin')")  // only users/clients with role admin (created in Keycloak) can access
     public Order saveOrderItems(
             @Valid
             @RequestBody

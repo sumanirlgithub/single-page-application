@@ -1,5 +1,6 @@
 package com.neo.api.gateway.filter;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,7 @@ import java.util.Map;
 
 
 @Component
+@Slf4j
 public class JwtClaimsForwardingFilter implements GlobalFilter {
 
     @Override

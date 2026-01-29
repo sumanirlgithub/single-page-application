@@ -130,7 +130,7 @@ spring:
   kafka:
     properties:
       schema.registry.url: http://192.168.0.143:9021
-    bootstrap-servers: localhost:9092,localhost:9093
+    bootstrap-servers: localhost:9094,localhost:9093
     producer:
       acks: all
       linger-ms: 0

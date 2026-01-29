@@ -131,6 +131,38 @@ public class KafkaPublisher {
         return null; // or throw if you want the scheduler to log/retry
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /**
      * Certain exceptions, like TimeoutException: Topic … not present in metadata, happen inside the producer thread before the
      * CompletableFuture returned by KafkaTemplate.send() is completed.

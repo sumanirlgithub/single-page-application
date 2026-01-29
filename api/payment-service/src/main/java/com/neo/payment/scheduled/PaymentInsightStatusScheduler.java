@@ -53,14 +53,14 @@ public class PaymentInsightStatusScheduler {
         requests = Arrays.asList(request1, request2);
 
         log.info("Calling Payment Insight Service for {} requests", requests);
+        paymentGatewayClient.callPaymentGatewayExternalUsingWebFluxPureReactiveAsync(requests)
+                .subscribe(); // subscribe at the boundary (controller or scheduler)
+
         //List<PaymentInsightResponse> responses = paymentGatewayClient.callPaymentGatewayExternalUsingWebFluxPureReactiveAsync(requests)
         //        .block(); // blocking
         //log.info("Aggregated results from the external service: " + responses);
         //assert responses != null;
         //savePaymentStatusInDb(responses, true);
-
-        paymentGatewayClient.callPaymentGatewayExternalUsingWebFluxPureReactiveAsync(requests)
-                .subscribe(); // subscribe at the boundary (controller or scheduler)
 
         log.info("Poller completed for auto refresh of payment status for all records");
     }
