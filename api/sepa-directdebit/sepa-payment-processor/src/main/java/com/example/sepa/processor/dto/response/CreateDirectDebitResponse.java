@@ -1,4 +1,4 @@
-package com.example.sepa.collection.api;
+package com.example.sepa.processor.dto.response;
 
 import java.math.BigDecimal;
 import java.time.Instant;

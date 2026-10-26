@@ -1,3 +1,4 @@
+
 package com.example.sepa.processor.domain;
 
 import java.math.BigDecimal;
@@ -12,6 +13,9 @@ public record SepaPayment(
         String currency,
         LocalDate requestedCollectionDate,
         String status,
+        String pain008Xml,
+        String submissionStatus,
+        String providerReference,
         Instant createdAt,
         Instant updatedAt
 ) {

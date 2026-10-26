@@ -1,4 +1,4 @@
-package com.example.sepa.collection.api;
+package com.example.sepa.processor.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;

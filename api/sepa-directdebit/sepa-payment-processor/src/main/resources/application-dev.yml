@@ -58,3 +58,10 @@ mandate-service:
 
 MANDATE_API_USER: payment-processor
 MANDATE_API_USER_PASSWORD: password
+
+
+bank:
+  psp:
+    base-url: ${BANK_PSP_BASE_URL:https://sandbox.example-bank.com}
+    api-key: ${BANK_PSP_API_KEY:}
+    submit-path: ${BANK_PSP_SUBMIT_PATH:/api/v1/direct-debits}
