@@ -1,0 +1,101 @@
+
+*******************************************************************************
+-Djavax.net.ssl.trustStore=C:/projects/git-repos-v1/single-page-application/api/sepa-directdebit/sepa-payment-processor/certs/mandate-truststore.p12
+-Djavax.net.ssl.trustStorePassword=password
+-Djavax.net.ssl.trustStoreType=PKCS12
+
+******************************************************************************
+
+
+3. Configure the Payment Processor to trust the local certificate
+
+Your Payment Processor's RestClient can still use Basic Auth and HTTPS:
+
+@Bean
+public RestClient mandateRestClient(
+        RestClient.Builder builder,
+        @Value("${mandate-service.base-url}") String baseUrl,
+        @Value("${mandate-service.username}") String username,
+        @Value("${mandate-service.password}") String password) {
+
+    return builder
+            .baseUrl(baseUrl)
+            .defaultHeaders(headers ->
+                    headers.setBasicAuth(username, password))
+            .build();
+}
+
+Set its URL to:
+
+mandate-service:
+  base-url: https://localhost:8443
+  username: ${MANDATE_API_USERNAME}
+  password: ${MANDATE_API_PASSWORD}
+
+For Java to trust your local self-signed certificate, create a separate truststore containing the exported certificate:
+
+keytool -importcert `
+  -alias mandate-local `
+  -file certs/mandate-service.crt `
+  -keystore certs/mandate-truststore.p12 `
+  -storetype PKCS12
+
+When prompted, set a truststore password and confirm that you trust the certificate. Then configure the Payment Processor JVM to use that truststore, for example in IntelliJ's VM options:
+
+-Djavax.net.ssl.trustStore=C:\path\to\mandate-truststore.p12
+-Djavax.net.ssl.trustStorePassword=your-truststore-password
+-Djavax.net.ssl.trustStoreType=PKCS12
+
+Use the actual absolute path on your machine. Keep this truststore and its password out of Git as well.
+
+For production, use a certificate from a trusted CA and the normal JVM trust configuration wherever possible; don't carry the local self-signed certificate into production.
+
+4. What to use as a production secret store
+
+The right choice depends on where you deploy:
+
+Deployment environment
+
+
+
+Suitable secret store
+
+
+
+
+Azure
+
+
+
+Azure Key Vault
+
+
+
+
+AWS
+
+
+
+AWS Secrets Manager
+
+
+
+
+Kubernetes
+
+
+
+A cloud secret manager integrated with Kubernetes, or a properly managed secrets solution such as Vault
+
+
+
+
+Other infrastructure
+
+
+
+HashiCorp Vault or the platform's managed secret service
+
+A production deployment should retrieve or inject secrets securely at runtime, restrict which service identity can access them, and support rotation. Avoid putting real passwords in application.yml, source code, Docker images, or plain-text Kubernetes manifests.
+
+One architectural note for your learning project: in-memory users are fine for learning, but the users and their encoded passwords are recreated whenever the Mandate Service starts. A production service would typically use a managed identity provider or a durable user/credential store, with role-based authorization still enforced by Spring Security.

@@ -1,0 +1,60 @@
+server:
+  Port: 8085
+
+  servlet:
+  #contextPath: /payment-processor
+
+spring:
+  application:
+    name: sepa-payment-processor
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    consumer:
+      group-id: sepa-payment-processor
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+    listener:
+      ack-mode: record
+
+  #datasource:
+  #  url: jdbc:oracle:thin:@localhost:1521/XEPDB1
+  #  username: payment_user
+  #  password: payment_password
+  #  driver-class-name: oracle.jdbc.OracleDriver
+
+  jdbc:
+    template:
+      fetch-size: 100
+
+  # First start MYSQL DB instance on your local server - located at windows/system services
+  datasource:
+    url: jdbc:mysql://localhost:3306/sumandb
+    username: root
+    password: root
+    driverClassName: com.mysql.jdbc.Driver
+    defaultSchema:
+    maxPoolSize: 20
+    hibernate:
+      generate_statistics: true
+      hbm2ddl.method: update
+      show_sql: true
+      format_sql: true
+      dialect: org.hibernate.dialect.MySQLDialect
+  jpa:
+    #open-in-view: true
+    generate-ddl: true
+
+
+mandate-service:
+  base-url: https://localhost:8443
+  username: ${MANDATE_API_USER}
+  password: ${MANDATE_API_USER_PASSWORD}
+
+MANDATE_API_USER: payment-processor
+MANDATE_API_USER_PASSWORD: password

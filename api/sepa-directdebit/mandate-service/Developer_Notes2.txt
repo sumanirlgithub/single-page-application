@@ -1,0 +1,263 @@
+Absolutely. For your Spring Boot Mandate Service, I recommend doing this in two stages:
+
+Local development: keep credentials outside source code using environment variables, and use HTTPS with a locally generated certificate.
+
+Production: store credentials in a managed secret store (such as Azure Key Vault, AWS Secrets Manager, or HashiCorp Vault) and use a certificate issued by a trusted Certificate Authority (CA).
+
+Environment variables are a good improvement over hard-coded passwords, but for production they are usually a way to inject secrets—not necessarily the secret store itself.
+
+1. Move the in-memory user passwords out of Java code
+
+Change your SecurityConfig so it reads credentials from configuration rather than containing "payment-secret" and "admin-secret" directly.
+
+package com.example.mandate.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService(
+            PasswordEncoder passwordEncoder,
+            @Value("${app.security.payment.username}") String paymentUsername,
+            @Value("${app.security.payment.password}") String paymentPassword,
+            @Value("${app.security.admin.username}") String adminUsername,
+            @Value("${app.security.admin.password}") String adminPassword) {
+
+        UserDetails paymentUser = User.builder()
+                .username(paymentUsername)
+                .password(passwordEncoder.encode(paymentPassword))
+                .roles("API")
+                .build();
+
+        UserDetails adminUser = User.builder()
+                .username(adminUsername)
+                .password(passwordEncoder.encode(adminPassword))
+                .roles("ADMIN")
+                .build();
+
+        return new InMemoryUserDetailsManager(paymentUser, adminUser);
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http) throws Exception {
+
+        http
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/actuator/health").permitAll()
+                    .anyRequest().authenticated()
+            )
+            .httpBasic(Customizer.withDefaults());
+
+        return http.build();
+    }
+}
+
+In your application.yml, refer to environment variables:
+
+app:
+  security:
+    payment:
+      username: ${MANDATE_API_USERNAME}
+      password: ${MANDATE_API_PASSWORD}
+    admin:
+      username: ${MANDATE_ADMIN_USERNAME}
+      password: ${MANDATE_ADMIN_PASSWORD}
+
+This means the application expects those variables to be supplied when it starts. Do not commit actual passwords, private keys, or populated secret files to Git.
+
+For local testing, set the environment variables in your IDE's Run Configuration, or in the shell before starting Spring Boot. Example for PowerShell:
+
+$env:MANDATE_API_USERNAME = "payment-processor"
+$env:MANDATE_API_PASSWORD = "use-a-long-random-local-secret"
+$env:MANDATE_ADMIN_USERNAME = "mandate-admin"
+$env:MANDATE_ADMIN_PASSWORD = "use-a-different-long-random-secret"
+
+.\mvnw spring-boot:run
+
+These are examples; choose your own unique secrets. Environment variables may be visible to users/processes with sufficient access to your machine, so don't treat them as a hardened production vault.
+
+2. Enable HTTPS for local development
+
+For local learning, you can create a self-signed certificate. It encrypts traffic, but Postman and your Payment Processor will need to trust that certificate.
+
+Step A — Generate a local certificate
+
+Run this in PowerShell from your project directory. Make sure your JDK's keytool is available.
+
+mkdir certs
+
+keytool -genkeypair `
+  -alias mandate-service `
+  -keyalg RSA `
+  -keysize 2048 `
+  -storetype PKCS12 `
+  -keystore certs/mandate-service.p12 `
+  -validity 365 `
+  -dname "CN=localhost, OU=Development, O=Local, C=IE" `
+  -ext "SAN=dns:localhost,ip:127.0.0.1"
+
+keytool will prompt you for a keystore password. Use a strong local password and keep it private.
+
+The certificate includes localhost and 127.0.0.1, so use one of those hostnames when testing. A certificate for localhost won't automatically validate for another hostname or IP.
+
+Important: Add the certs/ directory and keystore files to .gitignore. The .p12 file contains the server's private key.
+
+Step B — Configure Spring Boot to use the certificate
+
+Add this to the Mandate Service's application.yml:
+
+server:
+  port: 8443
+  ssl:
+    key-store: ${MANDATE_TLS_KEYSTORE:./certs/mandate-service.p12}
+    key-store-type: PKCS12
+    key-store-password: ${MANDATE_TLS_KEYSTORE_PASSWORD}
+    key-alias: mandate-service
+
+Set the keystore password in your IDE's environment variables or PowerShell:
+
+$env:MANDATE_TLS_KEYSTORE_PASSWORD = "your-keystore-password"
+
+Restart the Mandate Service. It should now listen on:
+
+https://localhost:8443
+
+Spring Boot's embedded server will handle TLS. You don't need to manually encrypt the HTTP request in your controller.
+
+Step C — Trust the certificate in Postman
+
+Export the public certificate from the keystore:
+
+keytool -exportcert `
+  -alias mandate-service `
+  -keystore certs/mandate-service.p12 `
+  -storetype PKCS12 `
+  -file certs/mandate-service.crt
+
+Enter the keystore password when prompted.
+
+In Postman, configure the exported certificate as a trusted CA/certificate using Postman's certificate settings. The exact menu wording can vary by Postman version. Then call:
+
+GET https://localhost:8443/api/v1/mandates/{mandateId}
+
+Use Authorization → Basic Auth as before.
+
+If you temporarily turn off Postman's SSL certificate verification to test, do that only on your local machine—and turn it back on. Trusting the local certificate is the better setup.
+
+3. Configure the Payment Processor to trust the local certificate
+
+Your Payment Processor's RestClient can still use Basic Auth and HTTPS:
+
+@Bean
+public RestClient mandateRestClient(
+        RestClient.Builder builder,
+        @Value("${mandate-service.base-url}") String baseUrl,
+        @Value("${mandate-service.username}") String username,
+        @Value("${mandate-service.password}") String password) {
+
+    return builder
+            .baseUrl(baseUrl)
+            .defaultHeaders(headers ->
+                    headers.setBasicAuth(username, password))
+            .build();
+}
+
+Set its URL to:
+
+mandate-service:
+  base-url: https://localhost:8443
+  username: ${MANDATE_API_USERNAME}
+  password: ${MANDATE_API_PASSWORD}
+
+For Java to trust your local self-signed certificate, create a separate truststore containing the exported certificate:
+
+keytool -importcert `
+  -alias mandate-local `
+  -file certs/mandate-service.crt `
+  -keystore certs/mandate-truststore.p12 `
+  -storetype PKCS12
+
+When prompted, set a truststore password and confirm that you trust the certificate. Then configure the Payment Processor JVM to use that truststore, for example in IntelliJ's VM options:
+
+-Djavax.net.ssl.trustStore=C:\path\to\mandate-truststore.p12
+-Djavax.net.ssl.trustStorePassword=your-truststore-password
+-Djavax.net.ssl.trustStoreType=PKCS12
+
+Use the actual absolute path on your machine. Keep this truststore and its password out of Git as well.
+
+For production, use a certificate from a trusted CA and the normal JVM trust configuration wherever possible; don't carry the local self-signed certificate into production.
+
+4. What to use as a production secret store
+
+The right choice depends on where you deploy:
+
+Deployment environment
+
+
+
+Suitable secret store
+
+
+
+
+Azure
+
+
+
+Azure Key Vault
+
+
+
+
+AWS
+
+
+
+AWS Secrets Manager
+
+
+
+
+Kubernetes
+
+
+
+A cloud secret manager integrated with Kubernetes, or a properly managed secrets solution such as Vault
+
+
+
+
+Other infrastructure
+
+
+
+HashiCorp Vault or the platform's managed secret service
+
+A production deployment should retrieve or inject secrets securely at runtime, restrict which service identity can access them, and support rotation. Avoid putting real passwords in application.yml, source code, Docker images, or plain-text Kubernetes manifests.
+
+One architectural note for your learning project: in-memory users are fine for learning, but the users and their encoded passwords are recreated whenever the Mandate Service starts. A production service would typically use a managed identity provider or a durable user/credential store, with role-based authorization still enforced by Spring Security.

@@ -1,0 +1,12 @@
+
+POST /api/v1/mandates
+
+{
+  "debtorName": "John Smith",
+  "iban": "IE29AIBK93115212345678",
+  "bic": "AIBKIE2D",
+  "mandateType": "CORE",
+  "signatureDate": "2026-09-29",
+  "creditorId": "IE98ZZZ123456",
+  "creditorName": "ABC Services Ltd"
+}

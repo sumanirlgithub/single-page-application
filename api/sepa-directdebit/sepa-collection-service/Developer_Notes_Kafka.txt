@@ -1,0 +1,100 @@
+For your SEPA Direct Debit architecture, you need to start a Kafka broker before your sepa-collection-service can publish collection events to the DIRECT-DEBIT-CREATED topic.
+
+Since you've previously used Docker Desktop and Confluent Kafka locally on Windows, I'd recommend running Kafka in Docker and running your Spring Boot microservices from IntelliJ.
+
+1. Understand the flow
+
+Merchant / REST API
+
+Submits a collection request
+
+SEPA Collection Service
+
+Stores collection + outbox event in MySQL
+
+Kafka broker — Docker
+
+Topic: DIRECT-DEBIT-CREATED
+
+SEPA Payment Processor
+
+Consumes and processes the event
+
+Kafka is a separate process from your Spring Boot services. You start it independently, and both services connect to it using the broker's advertised address.
+
+2. Start Kafka using Docker Desktop
+Step 1 — Start Docker Desktop
+
+Open Docker Desktop on Windows and wait until the Docker engine is running.
+
+Step 2 — Check whether your Kafka containers already exist
+
+Open PowerShell in IntelliJ's terminal or Windows PowerShell:
+
+docker ps -a
+
+Look for your existing Kafka containers, such as broker1, broker2, or kafka.
+
+- If you already have a Kafka Docker Compose configuration, go to that directory and start it with:
+
+docker compose up -d
+
+- If the containers already exist but are stopped, you can start an individual container with:
+
+docker start <container-name>
+
+Use the actual container name shown by docker ps -a. For your existing Confluent Kafka setup, I recommend reusing your current configuration rather than creating a second broker setup.
+
+Step 3 — Verify that Kafka is running
+docker ps
+
+Then inspect the logs of your Kafka container:
+
+docker logs <container-name> --tail 100
+
+You should see Kafka startup messages without a fatal error.
+
+3. Create your SEPA Kafka topic
+
+Once the broker is running, create the topic DIRECT-DEBIT-CREATED.
+
+If you are using your existing Confluent container, run:
+
+docker exec -it <container-name> kafka-topics `
+  --bootstrap-server localhost:9092 `
+  --create `
+  --topic DIRECT-DEBIT-CREATED `
+  --partitions 1 `
+  --replication-factor 1
+
+Replace <container-name> with your broker's actual name. This example assumes the broker accepts connections on port 9092 inside the container and is configured for a single-broker topic. For a multi-broker cluster, choose a replication factor supported by the number of brokers.
+
+Verify the topic:
+
+docker exec -it <container-name> kafka-topics `
+  --bootstrap-server localhost:9092 `
+  --list
+
+You should see:
+
+DIRECT-DEBIT-CREATED
+
+Kafka's official
+kafka.apache.org
+explains topic creation and verification.
+Apache Kafka
++1
+
+4. Configure your Spring Boot services
+
+Because you're running your Spring Boot applications from IntelliJ, configure both the Collection Service producer and Payment Processor consumer to use the host-accessible broker address.
+
+In each service's application.yml:
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+
+This address is correct only if your Docker Kafka configuration advertises the host listener as localhost:9092. If your existing setup uses ports 9092 and 9093, use the listener appropriate for each broker and check its advertised-listener configuration.
+
+Your Collection Service can then publish to DIRECT-DEBIT-CREATED, and your Payment Processor can consume from that topic.a subsequent processing step.

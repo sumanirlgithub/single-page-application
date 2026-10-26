@@ -1,0 +1,106 @@
+pipeline {
+    agent any
+	
+    tools {
+        maven 'maven3910' // Ensure this version is configured in Jenkins
+        jdk 'JDK21'      // Ensure this JDK version is configured in Jenkins
+    }
+	
+    environment {
+        HELM_CHART_NAME = 'my-helm-chart'
+    }	
+    
+    stages {
+        stage('Git Checkout') {
+            steps {
+				script {
+					git branch: 'master',
+						credentialsId: '1650e69a-9db9-4d0f-afa3-261462d5b626',
+						url: 'https://github.com/sumanirlgithub/git-repos-hello-world.git'
+					
+				}
+            }
+        }
+
+        stage('Build Maven') {
+            steps {
+				dir('./spring-boot-hello-service') {
+					// Build the project using Maven
+					script {
+						bat 'mvn clean install -DskipTests=true'
+						archive 'target/*.jar'					
+					}
+				}
+            }
+        }
+
+        stage('Test Maven') {
+            steps {
+				dir('./spring-boot-hello-service') {
+					// Run unit tests
+					script {
+						bat 'mvn test'
+					}
+					
+				}			
+            }
+        }		
+		
+        // Building Docker images
+		stage('Build Docker Image') {
+            steps {
+				dir('./spring-boot-hello-service') {
+					script {
+						 docker.build('hello-service-repo')
+					}				
+				}
+            }
+		}
+					
+        // Uploading Docker images into AWS ECR
+		stage('Push to ECR') {
+            steps {
+                script {
+						try {
+						
+							docker.withRegistry('https://968387867424.dkr.ecr.eu-north-1.amazonaws.com', 'ecr:eu-north-1:suman-ecr-aws-credentials') {
+								docker.image('hello-service-repo').push('latest')
+							}						
+						
+						} catch (Exception e) {
+							error "Failed to push image to ECR: ${e.message}"
+						}
+				}
+			}
+		}
+		
+        stage('Deploy to Kubernetes using Helm') {
+            steps {
+                script {
+					try {
+                    bat """
+                    // Update Helm chart values with new Docker image
+                    helm upgrade --install ${HELM_CHART_NAME} ./helm/${HELM_CHART_NAME} --set image.repository='hello-service-repo' --set image.tag='latest' --namespace default
+                    """
+					} catch (Exception e) {
+						error "Failed to deploy image to Kubernetes: ${e.message}"
+					}					
+                }
+            }
+        }		
+		
+	}			
+    
+    post {
+
+        success {
+            // Actions on successful build
+            echo 'Build succeeded!'
+        }
+
+        failure {
+            // Actions on failed build
+            echo 'Build failed!'
+        }
+    }
+}

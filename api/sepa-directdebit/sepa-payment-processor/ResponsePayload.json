@@ -1,0 +1,9 @@
+
+POST /api/v1/mandates
+
+{
+  "mandateId": "MDT-8f31c8d4",
+  "status": "ACTIVE",
+  "mandateType": "CORE",
+  "createdAt": "2026-09-29T20:10:00Z"
+}

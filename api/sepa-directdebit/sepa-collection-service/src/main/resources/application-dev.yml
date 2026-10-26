@@ -1,0 +1,47 @@
+# dev configuration for swift workflow application
+server:
+  port: 8082
+  servlet:
+    contextPath: /api
+  error:
+    include-message: always
+    include-binding-error: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh, health
+
+
+spring:
+  #datasource:
+  #  url: jdbc:oracle:thin:@localhost:1521/XEPDB1
+  #  username: payment_user
+  #  password: payment_password
+  #  driver-class-name: oracle.jdbc.OracleDriver
+
+  jdbc:
+    template:
+      fetch-size: 100
+
+  # First start MYSQL DB instance on your local server - located at windows/system services
+  datasource:
+    url: jdbc:mysql://localhost:3306/sumandb
+    username: root
+    password: root
+    driverClassName: com.mysql.jdbc.Driver
+    defaultSchema:
+    maxPoolSize: 20
+    hibernate:
+      generate_statistics: true
+      hbm2ddl.method: update
+      show_sql: true
+      format_sql: true
+      dialect: org.hibernate.dialect.MySQLDialect
+  jpa:
+    #open-in-view: true
+    generate-ddl: true
+
+mandate-service:
+  base-url: http://localhost:8089

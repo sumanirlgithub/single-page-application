@@ -1,0 +1,497 @@
+Absolutely. Now that we have settled the DTOs, domain model, repository, and service responsibilities, the overall design is much clearer.
+
+1. Overall architecture
+                         SEPA DIRECT DEBIT SYSTEM
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                           Client / Merchant                                 │
+│                                │                                            │
+│                                │ 1. Create Mandate                         │
+│                                ▼                                            │
+│                    ┌─────────────────────────┐                              │
+│                    │     MANDATE SERVICE     │                              │
+│                    │                         │                              │
+│                    │ POST /api/v1/mandates  │                              │
+│                    │ GET  /api/v1/mandates/ │                              │
+│                    │                         │                              │
+│                    │ Mandate master data     │                              │
+│                    └────────────┬────────────┘                              │
+│                                 │                                            │
+│                                 │ MySQL                                     │
+│                                 ▼                                            │
+│                         ┌──────────────┐                                    │
+│                         │    MANDATE   │                                    │
+│                         │     DB       │                                    │
+│                         └──────────────┘                                    │
+│                                                                             │
+│                                                                             │
+│                           2. Create Collection                              │
+│                                │                                            │
+│                                ▼                                            │
+│                    ┌─────────────────────────┐                              │
+│                    │   COLLECTION SERVICE   │                              │
+│                    │                         │                              │
+│                    │ POST /api/v1/          │                              │
+│                    │ direct-debits          │                              │
+│                    │                         │                              │
+│                    │ Creates collection     │                              │
+│                    │ request                │                              │
+│                    └────────────┬────────────┘                              │
+│                                 │                                            │
+│                         ┌───────┴────────┐                                   │
+│                         │                │                                   │
+│                         ▼                ▼                                   │
+│                  ┌─────────────┐  ┌──────────────┐                           │
+│                  │ COLLECTION  │  │ OUTBOX_EVENT │                           │
+│                  │     DB      │  │     DB       │                           │
+│                  └─────────────┘  └──────┬───────┘                           │
+│                                          │                                   │
+│                                          │ Outbox Publisher                  │
+│                                          ▼                                   │
+│                                   ┌─────────────┐                            │
+│                                   │    KAFKA    │                            │
+│                                   │             │                            │
+│                                   │ DIRECT-     │                            │
+│                                   │ DEBIT-      │                            │
+│                                   │ CREATED     │                            │
+│                                   └──────┬──────┘                            │
+│                                          │                                   │
+│                                          │ Kafka Consumer                    │
+│                                          ▼                                   │
+│                    ┌─────────────────────────┐                              │
+│                    │ SEPA PAYMENT PROCESSOR │                              │
+│                    │                         │                              │
+│                    │ Consume event           │                              │
+│                    │ Validate collection     │                              │
+│                    │ Get mandate             │                              │
+│                    │ Generate pain.008       │                              │
+│                    │ Submit to bank / PSP    │                              │
+│                    └────────────┬────────────┘                              │
+│                                 │                                            │
+│                                 │ GET mandate                               │
+│                                 ▼                                            │
+│                    ┌─────────────────────────┐                              │
+│                    │     MANDATE SERVICE     │                              │
+│                    │                         │                              │
+│                    │ GET /api/v1/mandates/  │                              │
+│                    │ {mandateId}             │                              │
+│                    └─────────────────────────┘                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+2. The most important interaction
+
+The key design decision we made is:
+
+The Kafka event contains the mandateId, but does not contain all the mandate information.
+
+For example:
+
+{
+  "collectionId": "DD-20260930-000001",
+  "mandateId": "MAND-20260930-000001",
+  "amount": 500.00,
+  "currency": "EUR",
+  "requestedCollectionDate": "2026-10-15",
+  "sequenceType": "OOFF"
+}
+
+The Payment Processor then asks the Mandate Service for the authoritative mandate:
+
+Payment Processor
+       │
+       │ GET /api/v1/mandates/MAND-20260930-000001
+       ▼
+Mandate Service
+       │
+       │ MandateResponse
+       ▼
+Payment Processor
+
+This avoids duplicating debtor/creditor information in Kafka.
+
+3. Complete business flow
+Step 1 — Create the mandate
+
+Client calls:
+
+POST /api/v1/mandates
+
+with:
+
+{
+  "debtor": {
+    "name": "John Smith",
+    "iban": "IE29AIBK93115212345678",
+    "bic": "AIBKIE2D"
+  },
+  "creditor": {
+    "name": "ABC Payments Ltd",
+    "creditorId": "IE123456789",
+    "iban": "IE12BOFI90001712345678",
+    "bic": "BOFIIE2D"
+  },
+  "mandateType": "CORE",
+  "signatureDate": "2026-09-01"
+}
+
+Mandate Service:
+
+validate
+   ↓
+generate mandateId
+   ↓
+save MANDATE
+   ↓
+return ACTIVE mandate
+
+Response:
+
+{
+  "mandateId": "MAND-20260930-000001",
+  "status": "ACTIVE",
+  "debtor": {
+    "name": "John Smith",
+    "iban": "IE29AIBK93115212345678",
+    "bic": "AIBKIE2D"
+  },
+  "creditor": {
+    "name": "ABC Payments Ltd",
+    "creditorId": "IE123456789",
+    "iban": "IE12BOFI90001712345678",
+    "bic": "BOFIIE2D"
+  },
+  "mandateType": "CORE",
+  "signatureDate": "2026-09-01",
+  "createdAt": "2026-09-30T10:15:30Z",
+  "updatedAt": "2026-09-30T10:15:30Z"
+}
+4. Step 2 — Create a direct debit collection
+
+The merchant/application now wants to collect €500.
+
+It calls:
+
+POST /api/v1/direct-debits
+{
+  "mandateId": "MAND-20260930-000001",
+  "amount": 500.00,
+  "currency": "EUR",
+  "requestedCollectionDate": "2026-10-15"
+}
+
+The Collection Service:
+
+Receive request
+      │
+      ▼
+Validate mandateId
+      │
+      ▼
+Create collectionId
+      │
+      ▼
+BEGIN TRANSACTION
+      │
+      ├── INSERT SEPA_DIRECT_DEBIT
+      │
+      └── INSERT OUTBOX_EVENT
+      │
+      ▼
+COMMIT
+
+For example:
+
+collectionId = DD-20260930-000001
+5. Step 3 — Outbox publishes to Kafka
+
+The Collection Service's scheduled Outbox Publisher reads:
+
+OUTBOX_EVENT
+
+and publishes:
+
+DIRECT-DEBIT-CREATED
+
+to Kafka.
+
+The event:
+
+{
+  "collectionId": "DD-20260930-000001",
+  "mandateId": "MAND-20260930-000001",
+  "amount": 500.00,
+  "currency": "EUR",
+  "requestedCollectionDate": "2026-10-15",
+  "sequenceType": "OOFF"
+}
+
+Then:
+
+Collection Service
+       │
+       ▼
+ OUTBOX_EVENT
+       │
+       ▼
+ Outbox Publisher
+       │
+       ▼
+     Kafka
+       │
+       │ DIRECT-DEBIT-CREATED
+       ▼
+Payment Processor
+6. Step 4 — Payment Processor consumes the event
+
+The Payment Processor receives:
+
+DirectDebitCreatedEvent
+
+It performs:
+
+Kafka event
+     │
+     ▼
+Idempotency check
+     │
+     ▼
+Validate event
+     │
+     ▼
+GET mandate
+     │
+     ▼
+Validate mandate
+     │
+     ▼
+Create SEPA_PAYMENT
+     │
+     ▼
+Build Pain008Request
+     │
+     ▼
+Validate Pain008Request
+     │
+     ▼
+Generate pain.008 XML
+7. Step 5 — Payment Processor calls Mandate Service
+
+This is an important interaction:
+
+              HTTP
+Payment Processor ───────────────────► Mandate Service
+       │                                  │
+       │ GET /api/v1/mandates/{id}        │
+       │                                  │
+       │ ◄────────────────────────────────│
+       │         MandateResponse           │
+       │                                  │
+
+The response provides:
+
+mandateId
+status
+debtor
+  ├── name
+  ├── iban
+  └── bic
+
+creditor
+  ├── name
+  ├── creditorId
+  ├── iban
+  └── bic
+
+mandateType
+signatureDate
+
+The Payment Processor combines that with the Kafka event.
+
+Kafka Event                    Mandate Response
+────────────                   ────────────────
+collectionId                   mandateId
+amount                         debtor
+currency                       creditor
+requestedDate                  mandateType
+sequenceType                   signatureDate
+       │                              │
+       └──────────────┬───────────────┘
+                      ▼
+               Pain008Request
+8. Step 6 — Generate pain.008
+
+The Payment Processor creates:
+
+Pain008Request
+
+then:
+
+Pain008Request
+      │
+      ▼
+Pain008Validator
+      │
+      ▼
+Pain008Generator
+      │
+      ▼
+pain.008 XML
+
+Conceptually:
+
+<Document>
+    <CstmrDrctDbtInitn>
+
+        <GrpHdr>
+            ...
+        </GrpHdr>
+
+        <PmtInf>
+            ...
+            <ReqdColltnDt>2026-10-15</ReqdColltnDt>
+
+            <Cdtr>
+                ...
+            </Cdtr>
+
+            <DrctDbtTxInf>
+                ...
+                <InstdAmt Ccy="EUR">500.00</InstdAmt>
+
+                <MndtRltdInf>
+                    <MndtId>MAND-20260930-000001</MndtId>
+                    ...
+                </MndtRltdInf>
+
+                <Dbtr>
+                    ...
+                </Dbtr>
+
+                <DbtrAcct>
+                    ...
+                </DbtrAcct>
+
+            </DrctDbtTxInf>
+
+        </PmtInf>
+
+    </CstmrDrctDbtInitn>
+</Document>
+9. Step 7 — Eventually submit to bank / PSP
+
+I would keep this inside the Payment Processor initially:
+
+SEPA Payment Processor
+        │
+        ├── Kafka Consumer
+        ├── MandateClient
+        ├── Payment Repository
+        ├── Pain008Validator
+        ├── Pain008Generator
+        │
+        └── BankClient / PSPClient
+                    │
+                    ▼
+                Bank / PSP
+
+So the complete processing becomes:
+
+DIRECT-DEBIT-CREATED
+        │
+        ▼
+Payment Processor
+        │
+        ├── Get Mandate ──────► Mandate Service
+        │                           │
+        │◄──────────────────────────┘
+        │
+        ├── Validate
+        │
+        ├── Save SEPA_PAYMENT
+        │
+        ├── Generate pain.008
+        │
+        └── Submit to Bank / PSP
+10. Responsibilities of each service
+Service	Responsibility	Does it collect money?
+Mandate Service	Create, store and retrieve mandates	No
+Collection Service	Create direct-debit collection requests	No
+Payment Processor	Process collection, retrieve mandate, generate pain.008, submit to bank/PSP	It initiates the bank collection; bank/PSP executes it
+Kafka	Asynchronous event transport	No
+Outbox	Reliable publication of collection events	No
+Bank / PSP	Execute/process the SEPA direct debit	Yes
+11. Final end-to-end picture
+┌──────────────┐
+│    CLIENT    │
+└──────┬───────┘
+       │
+       │ POST Mandate
+       ▼
+┌──────────────────┐
+│ MANDATE SERVICE  │
+└────────┬─────────┘
+         │
+         │ Save
+         ▼
+    ┌─────────┐
+    │ MANDATE │
+    │   DB    │
+    └─────────┘
+
+
+       Later...
+
+┌──────────────┐
+│    CLIENT    │
+└──────┬───────┘
+       │
+       │ POST Direct Debit
+       ▼
+┌──────────────────────┐
+│  COLLECTION SERVICE  │
+└──────────┬───────────┘
+           │
+           ├──────────────► SEPA_DIRECT_DEBIT DB
+           │
+           └──────────────► OUTBOX_EVENT
+                                  │
+                                  ▼
+                               KAFKA
+                                  │
+                         DIRECT-DEBIT-CREATED
+                                  │
+                                  ▼
+                    ┌─────────────────────────┐
+                    │ SEPA PAYMENT PROCESSOR │
+                    └───────────┬─────────────┘
+                                │
+                                │ GET mandate
+                                ▼
+                    ┌─────────────────────┐
+                    │   MANDATE SERVICE   │
+                    └──────────┬──────────┘
+                               │
+                               │ MandateResponse
+                               ▼
+                    ┌─────────────────────┐
+                    │ SEPA PAYMENT        │
+                    │ PROCESSOR            │
+                    │                     │
+                    │ Validate            │
+                    │ Save Payment        │
+                    │ Build Pain008       │
+                    │ Validate XML data   │
+                    │ Generate pain.008   │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                         ┌────────────┐
+                         │ BANK / PSP │
+                         └────────────┘
+The architectural principle to remember
+
+Mandate Service = "Who is authorized to collect?"
+
+Collection Service = "What amount do we want to collect, and when?"
+
+Payment Processor = "Turn that collection request + mandate information into a SEPA payment instruction and send it to the bank/PSP."

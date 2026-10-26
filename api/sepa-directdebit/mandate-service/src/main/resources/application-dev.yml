@@ -1,0 +1,73 @@
+# dev configuration for payments hub application
+server:
+  #port: 8081
+  port: 8443
+  ssl:
+    key-store: ${MANDATE_TLS_KEYSTORE:./certs/mandate-service.p12}
+    key-store-type: PKCS12
+    key-store-password: ${MANDATE_TLS_KEYSTORE_PASSWORD}
+    key-alias: mandate-service
+
+  servlet:
+    #contextPath: /mandate-service
+  error:
+    include-message: always
+    include-binding-error: always
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: DEBUG
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+  #datasource:
+  #  url: jdbc:oracle:thin:@localhost:1521/XEPDB1
+  #  username: payment_user
+  #  password: payment_password
+  #  driver-class-name: oracle.jdbc.OracleDriver
+
+  jdbc:
+    template:
+      fetch-size: 100
+
+  # First start MYSQL DB instance on your local server - located at windows/system services
+  datasource:
+    url: jdbc:mysql://localhost:3306/sumandb
+    username: root
+    password: root
+    driverClassName: com.mysql.jdbc.Driver
+    defaultSchema:
+    maxPoolSize: 20
+    hibernate:
+      generate_statistics: true
+      hbm2ddl.method: update
+      show_sql: true
+      format_sql: true
+      dialect: org.hibernate.dialect.MySQLDialect
+  jpa:
+    #open-in-view: true
+    generate-ddl: true
+
+app:
+  security:
+    basic:
+      username: ${MANDATE_API_USER}
+      password: ${MANDATE_API_USER_PASSWORD}
+    admin:
+      username: ${MANDATE_API_ADMIN}
+      password: ${MANDATE_API_ADMIN_PASSWORD}
+
+
+customer-service:
+  base-url: http://localhost:8083
+  username: test
+  password: password
+
+
+MANDATE_API_USER: payment-processor
+MANDATE_API_USER_PASSWORD: password
+MANDATE_API_ADMIN: mandate_api_admin
+MANDATE_API_ADMIN_PASSWORD: password
+
+MANDATE_TLS_KEYSTORE_PASSWORD: your-keystore-password

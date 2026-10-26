@@ -1,0 +1,159 @@
+Yes. Since you now have:
+
+Mandate Service
+       |
+       | mandateId
+       v
+Collection Service
+       |
+       | saves DirectDebit + OutboxEvent
+       v
+Kafka
+       |
+       | DIRECT-DEBIT-CREATED
+       v
+SEPA Payment Processor
+
+the SEPA Payment Processor should be a separate Spring Boot service that consumes the Kafka event and performs the next stage of processing.
+
+For your learning project, I would keep the first version simple:
+
+Kafka Consumer
+     |
+     v
+Validate event
+     |
+     v
+Create SEPA payment instruction
+     |
+     v
+Save to MySQL
+     |
+     v
+Generate SEPA payment message
+     |
+     v
+Send to simulated Bank/PSP
+
+Importantly, this service does not create the mandate and does not create the direct debit request. Those are already handled by your other services.
+
+************************************************************************************
+*************************************************************************************
+11. Complete flow
+
+You now have three services:
+
+                    ┌──────────────────────┐
+                    │   Mandate Service     │
+                    │                      │
+                    │ POST /mandates        │
+                    └──────────┬───────────┘
+                               │
+                               │ mandateId
+                               ▼
+                    ┌──────────────────────┐
+                    │  Collection Service  │
+                    │                      │
+                    │ POST /direct-debits  │
+                    └──────────┬───────────┘
+                               │
+                               │
+                     ┌─────────┴─────────┐
+                     │                   │
+                     ▼                   ▼
+              SEPA_DIRECT_DEBIT     OUTBOX_EVENT
+                                         │
+                                         │
+                                  Outbox Publisher
+                                         │
+                                         ▼
+                              DIRECT-DEBIT-CREATED
+                                         │
+                                         ▼
+                              ┌─────────────────────┐
+                              │   Kafka             │
+                              └──────────┬──────────┘
+                                         │
+                                         ▼
+                              ┌─────────────────────┐
+                              │ SEPA Payment        │
+                              │ Processor           │
+                              │                     │
+                              │ Kafka Consumer      │
+                              └──────────┬──────────┘
+                                         │
+                                         ▼
+                                  SEPA_PAYMENT
+                                         │
+                                         ▼
+                                pain.008 creation
+                                         │
+                                         ▼
+                                  Bank / PSP
+One important SEPA distinction
+
+At this point, your processor is not yet sending a real SEPA payment. It is receiving the direct-debit instruction and creating an internal payment record.
+
+The next logical step is to implement:
+
+SEPA_PAYMENT
+     |
+     v
+Build pain.008 XML
+     |
+     v
+Validate XML
+     |
+     v
+Send to Bank / PSP
+     |
+     v
+Update status
+
+For a real SEPA Direct Debit flow, the customer-to-bank initiation message is generally ISO 20022 pain.008, rather than simply sending your internal JSON event to the bank. The Kafka event is your internal microservice event; pain.008 is the external SEPA payment message.
+
+So I would keep those two layers separate:
+
+Kafka JSON
+   ↓
+DirectDebitCreatedEvent
+   ↓
+SEPA Payment Processor
+   ↓
+pain.008 XML
+   ↓
+Bank / PSP
+
+That separation will make your project much closer to a real banking/payment architecture.
+
+************************************************************************************************
+**************************************************************************************************
+
+Collection Service
+       |
+       | collectionId
+       | mandateId
+       | amount
+       | collectionDate
+       v
+      Kafka
+       |
+       v
+SEPA Payment Processor
+       |
+       | mandateId
+       v
+Mandate Service
+       |
+       | mandate details
+       v
+Pain008Request
+       |
+       v
+Pain008Generator
+       |
+       v
+pain.008
+       |
+       v
+Bank / PSP

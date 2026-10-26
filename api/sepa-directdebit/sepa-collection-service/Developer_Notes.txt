@@ -1,0 +1,13 @@
+sepa-collection-service
+
+Its responsibility is:
+
+POST /api/v1/direct-debits
+        │
+        ├── Validate request
+        ├── Validate mandate
+        ├── Create collection record
+        ├── Generate collection ID
+        └── Return collection details
+
+It should not immediately debit the bank account. The actual PSP/bank submission can be a subsequent processing step.
