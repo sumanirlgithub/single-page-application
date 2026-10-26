@@ -1,0 +1,148 @@
+Yes, you are already handling idempotency in your Java code. In your SepaPaymentProcessorService, you have this check:
+
+if (paymentRepository.existsByCollectionId(event.collectionId())) {
+    log.info(
+            "Payment already exists for collectionId={}",
+            event.collectionId()
+    );
+    return;
+}
+
+And in BankSubmissionService, you check the submission status before submitting again.
+
+However, Java checks alone are not enough to guarantee idempotency. You need both application-level checks and database-level constraints.
+
+1. What your existing Java code handles
+
+Protection
+
+
+
+Current approach
+
+
+
+Limitation
+
+
+
+
+Duplicate collection processing
+
+
+
+existsByCollectionId()
+
+
+
+Two concurrent requests can both pass the check.
+
+
+
+
+Duplicate payment creation
+
+
+
+Check before save()
+
+
+
+No guarantee without a database unique constraint.
+
+
+
+
+Duplicate bank submission
+
+
+
+Check submissionStatus
+
+
+
+Two concurrent workers can both read NOT_SUBMITTED and submit.
+
+
+
+
+Network timeout and retry
+
+
+
+SUBMISSION_UNKNOWN handling
+
+
+
+Must reconcile with the provider before retrying.
+
+Why the database constraint matters
+
+Imagine two Kafka deliveries for the same collection arrive almost simultaneously:
+
+Consumer A
+
+Consumer B
+
+Checks collection ID → not found
+
+Checks collection ID → not found
+
+Inserts payment
+
+Attempts insert
+
+Without a unique constraint, both inserts could succeed. With the constraint, only one can succeed.
+
+2. Add a unique constraint in MySQL
+
+First, check whether duplicates already exist:
+
+SELECT COLLECTION_ID, COUNT(*) AS TOTAL
+FROM SEPA_PAYMENT
+GROUP BY COLLECTION_ID
+HAVING COUNT(*) > 1;
+
+If no duplicate rows exist, add the constraint:
+
+ALTER TABLE SEPA_PAYMENT
+ADD CONSTRAINT UK_SEPA_PAYMENT_COLLECTION_ID
+UNIQUE (COLLECTION_ID);
+
+Also make sure COLLECTION_ID is NOT NULL, since a unique constraint in MySQL can permit multiple NULL values.
+
+3. Handle duplicate-key errors in Java
+
+Your repository currently imports DuplicateKeyException but doesn't use it. You can use that import to handle concurrent duplicate inserts.
+
+For example, in SepaPaymentProcessorService, wrap the initial save:
+
+try {
+    paymentRepository.save(payment);
+} catch (DuplicateKeyException ex) {
+    log.info(
+            "Payment already created for collectionId={}",
+            event.collectionId()
+    );
+    return;
+}
+
+Add this import:
+
+import org.springframework.dao.DuplicateKeyException;
+
+This is an illustrative change, not the complete production solution. With your @Transactional method, a database constraint violation can mark the transaction rollback-only. Returning from the method does not guarantee that the transaction will commit successfully. Handle the duplicate outside the failed transaction boundary, or use a database-specific atomic insert strategy.
+
+4. Prevent duplicate bank submissions
+
+Your BankSubmissionService checks statuses, which is useful, but it does not prevent two concurrent workers from both passing the check.
+
+For robust protection, use:
+
+An atomic database claim or conditional status update to ensure only one worker claims a payment for submission.
+
+The same provider-supported idempotency key for retries of the same submission.
+
+Reconciliation before retrying a submission whose outcome is unknown.
+
+The key distinction: Java checks tell you whether a duplicate appears to exist. A database constraint and atomic state transitions enforce that protection under concurrency. Provider-side idempotency and reconciliation protect against duplicate external bank submissions.

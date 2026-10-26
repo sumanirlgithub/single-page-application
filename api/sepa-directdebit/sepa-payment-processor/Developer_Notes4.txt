@@ -1,0 +1,438 @@
+You're welcome! Great progress. You've now connected the main stages of your SEPA Direct Debit flow: mandate validation, collection processing, pain.008 XML generation and bank/PSP submission.
+
+Let's bring the whole system together, from the moment a customer signs a mandate through to submitting the collection to the bank and receiving the eventual outcome.
+
+1. Overall microservices architecture
+
+Based on the microservices you've built, your architecture looks like this:
+
+Customer / Creditor Application
+
+Creates mandates and requests collections
+
+Mandate Service
+
+Stores mandate, debtor and creditor details; manages mandate lifecycle
+
+SEPA Collection Service
+
+Accepts collection requests; stores collection and outbox event
+
+Kafka — DIRECT-DEBIT-CREATED
+
+Asynchronous communication between services
+
+SEPA Payment Processor
+
+Consumes event, validates mandate, creates payment and generates pain.008 XML
+
+BankSubmissionService → BankSubmissionClient
+
+Submits the XML to the bank/PSP
+
+Bank / PSP
+
+Receives submission, validates it and returns a response or reference
+
+Status Reconciliation — next stage
+
+Processes provider responses and bank status reports, including acceptance, rejection and returns
+
+The important distinction is that submitting a payment file is not the same as successfully collecting money. The bank may accept the file for processing, but the collection can later be rejected, returned or unpaid.
+
+2. End-to-end flow, step by step
+Stage 1 — Create the mandate
+
+Service: mandate-service
+
+A customer agrees to let the creditor collect payments from their bank account under a SEPA Direct Debit mandate.
+
+The mandate typically contains:
+
+Mandate ID — your internal identifier.
+
+Debtor name and IBAN.
+
+Creditor name, creditor identifier and IBAN.
+
+Mandate signature date.
+
+Mandate status, such as ACTIVE.
+
+Mandate reference and other required mandate information.
+
+Result: Mandate saved
+
+The mandate service persists the mandate in MySQL and returns the mandateId. A collection should only proceed when the mandate is valid for the intended collection.
+
+Example:
+
+mandateId = MANDATE-1001
+status    = ACTIVE
+debtor    = Customer A
+creditor  = Company B
+
+The customer must have given valid authorisation. A database status of ACTIVE alone does not prove that the mandate was properly authorised.
+
+Stage 2 — Request a collection
+
+Service: sepa-collection-service
+
+The creditor requests a collection against the existing mandate.
+
+Example request:
+
+{
+  "mandateId": "MANDATE-1001",
+  "amount": 125.50,
+  "currency": "EUR",
+  "requestedCollectionDate": "2026-11-05",
+  "sequenceType": "RCUR"
+}
+
+The collection service:
+
+Validates the request's basic fields.
+
+Creates a unique collectionId.
+
+Saves the collection record.
+
+Saves an outbox event in the same database transaction.
+
+An outbox publisher publishes the event to Kafka.
+
+Example identifiers:
+
+mandateId   = MANDATE-1001
+collectionId = COLL-2001
+eventId      = EVENT-3001
+
+Each identifier has a different purpose. The collectionId identifies the requested collection; the eventId identifies the event message.
+
+Stage 3 — Publish and consume the Kafka event
+
+Producer: sepa-collection-service
+
+Consumer: sepa-payment-processor
+
+Kafka topic:
+
+DIRECT-DEBIT-CREATED
+
+The event contains the information the payment processor needs, including the collection ID, mandate ID, amount, currency, requested collection date and sequence type.
+
+The payment processor then:
+
+Consumes DirectDebitCreatedEvent.
+
+Checks whether a payment already exists for the collectionId.
+
+Calls MandateClient over HTTPS to retrieve the mandate.
+
+Validates the mandate status and required creditor/debtor data.
+
+If the mandate is inactive or invalid, processing must stop and the failure must be handled or recorded appropriately. Do not submit a collection against an invalid mandate.
+
+Stage 4 — Create the internal SEPA payment
+
+Service: SepaPaymentProcessorService
+
+The processor creates a new paymentId and stores the initial payment in the SEPA_PAYMENT table.
+
+For example:
+
+Field
+
+
+
+Example
+
+
+
+
+paymentId
+
+
+
+PAY-4001
+
+
+
+
+collectionId
+
+
+
+COLL-2001
+
+
+
+
+mandateId
+
+
+
+MANDATE-1001
+
+
+
+
+amount
+
+
+
+125.50
+
+
+
+
+currency
+
+
+
+EUR
+
+
+
+
+status
+
+
+
+RECEIVED
+
+
+
+
+submissionStatus
+
+
+
+NOT_SUBMITTED
+
+The paymentId is internal to the payment processor. It is not the same as the mandate ID, collection ID or bank reference.
+
+Stage 5 — Generate and store the pain.008 XML
+
+Classes: Pain008Request, Pain008Validator, Pain008Generator
+
+Your processor builds the request using the collection event and the retrieved mandate details.
+
+The flow is:
+
+Build Pain008Request.
+
+Validate required fields.
+
+Generate the SEPA Direct Debit XML.
+
+Store the XML in SEPA_PAYMENT.PAIN008_XML.
+
+Update the payment STATUS to XML_GENERATED.
+
+A simplified XML structure looks like this:
+
+<Document>
+    <CstmrDrctDbtInitn>
+        <GrpHdr>
+            <MsgId>MSG-PAY-4001</MsgId>
+        </GrpHdr>
+        <PmtInf>
+            <!-- Payment and collection details -->
+            <DrctDbtTxInf>
+                <!-- Mandate and debtor details -->
+            </DrctDbtTxInf>
+        </PmtInf>
+    </CstmrDrctDbtInitn>
+</Document>
+
+This is illustrative, not a complete bank-submittable ISO 20022 document. Your generator must produce the correct namespace, mandatory elements and schema version required by your bank/PSP.
+
+Your MsgId identifies the XML message and should be unique according to the relevant message rules.
+
+Stage 6 — Submit the XML to the bank/PSP
+
+Classes: BankSubmissionService, BankSubmissionClient
+
+This is the integration you've just completed.
+
+After the XML has been saved and the database transaction commits, the submission workflow calls:
+
+bankSubmissionService.submit(paymentId);
+
+The submission service:
+
+Retrieves the saved XML using paymentId.
+
+Checks the existing submission status.
+
+Marks the submission attempt as SUBMITTING.
+
+Calls the bank/PSP HTTP endpoint through BankSubmissionClient.
+
+Processes the response.
+
+Stores the provider reference and updates the submission status.
+
+Example:
+
+paymentId        = PAY-4001
+status           = SUBMITTED
+submissionStatus = SUBMITTED
+providerReference = BANK-REF-98765
+
+The provider reference is an example. Your actual bank may return a different identifier or require a separate file-upload acknowledgement.
+
+Important: SUBMITTED means the request was submitted according to your integration's response handling. It does not mean the bank has finally accepted every collection or that the customer's account has been debited.
+
+Stage 7 — Receive acceptance, rejection and collection outcomes
+
+This is the next major capability to build.
+
+The bank/PSP may provide status information through an API, webhook, file download or scheduled statement/report.
+
+Depending on the provider and scheme, you may encounter:
+
+Technical or file-level acceptance/rejection.
+
+Payment or collection-level acceptance/rejection.
+
+Later returns, refunds or unpaid collections.
+
+For example, ISO 20022 messages such as pain.002 can communicate payment initiation status, while other reports or messages may communicate later collection outcomes. The precise flow depends on the bank and the service you've contracted.
+
+Your application should record these outcomes against the correct payment and collection. Do not treat an HTTP 200 OK as proof of successful collection.
+
+3. Complete lifecycle of one collection
+
+Here is an example of how the records progress across your services.
+
+Example payment: €125.50
+
+Example statuses for your application; exact mappings depend on the bank/PSP.
+
+Mandate created
+
+ACTIVE
+
+mandate-service stores the authorised mandate.
+
+Collection requested
+
+CREATED
+
+sepa-collection-service creates COLL-2001 and publishes the event through its outbox.
+
+Payment created
+
+RECEIVED
+
+sepa-payment-processor creates PAY-4001 and validates the mandate.
+
+XML generated
+
+XML_GENERATED
+
+The pain.008 XML is persisted in MySQL.
+
+Submission initiated
+
+SUBMITTING
+
+BankSubmissionService sends the saved XML to the provider.
+
+Provider acknowledges submission
+
+SUBMITTED
+
+The provider reference is stored. Final collection outcome is still pending.
+
+Bank reports final outcome
+
+COLLECTED
+
+Example successful business outcome, recorded only when supported by the bank's authoritative status/report.
+
+A failed collection may instead transition to an appropriate rejection, return or unpaid state. Keep the submission lifecycle separate from the actual collection outcome.
+
+4. Which service owns which data?
+
+Data
+
+
+
+Owning service
+
+
+
+
+Mandate details and mandate lifecycle
+
+
+
+mandate-service
+
+
+
+
+Collection request and collection lifecycle
+
+
+
+sepa-collection-service
+
+
+
+
+Internal payment, pain.008 XML and submission state
+
+
+
+sepa-payment-processor
+
+
+
+
+Bank/PSP acknowledgement and provider reference
+
+
+
+Recorded by the processor, based on provider responses
+
+
+
+
+Final collection outcome
+
+
+
+Recorded by the processor or a dedicated reconciliation component, depending on your design
+
+Avoid allowing one service to update another service's database tables directly. Communicate through APIs or events.
+
+5. What I would implement next
+
+You have completed the main mandate → collection → payment → XML → bank submission path. I'd prioritise these next steps:
+
+1. Idempotency and duplicate protection
+
+Add a unique constraint on SEPA_PAYMENT.COLLECTION_ID. Ensure retries cannot create a second payment or duplicate a bank submission.
+
+2. Durable submission recovery
+
+Replace the in-memory after-commit callback with a transactional outbox or a recovery worker. This ensures saved XML is eventually submitted even if the application restarts.
+
+3. Bank status reconciliation
+
+Implement polling, webhook handling or report ingestion according to the provider's API. Store acknowledgements and reconcile final collection outcomes.
+
+4. SEPA compliance and validation
+
+Verify generated XML against the scheme and bank's required ISO 20022 version, validate mandate and sequence rules, and enforce collection-date and submission cut-offs.
+
+5. Operational monitoring and security
+
+Add structured logs with correlation IDs, safe handling of IBANs and XML, metrics, alerts, and audit records for every payment state transition.
+
+My recommendation is to build durable submission recovery first, followed by bank status reconciliation. These are the two most important gaps between a working demonstration and a reliable payment-processing workflow.
