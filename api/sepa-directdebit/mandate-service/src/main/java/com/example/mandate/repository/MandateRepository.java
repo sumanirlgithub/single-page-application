@@ -1,12 +1,12 @@
+
 package com.example.mandate.repository;
 
 import com.example.mandate.domain.SepaMandate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Date;
-import java.sql.Timestamp;
-import java.util.List;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Optional;
 
 @Repository
@@ -18,14 +18,12 @@ public class MandateRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    /**
-     * Persists a new mandate.
-     */
     public void save(SepaMandate mandate) {
 
         String sql = """
                 INSERT INTO MANDATE (
                     MANDATE_ID,
+                    MANDATE_REFERENCE,
                     DEBTOR_NAME,
                     DEBTOR_IBAN,
                     DEBTOR_BIC,
@@ -39,12 +37,13 @@ public class MandateRepository {
                     CREATED_AT,
                     UPDATED_AT
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         jdbcTemplate.update(
                 sql,
                 mandate.mandateId(),
+                mandate.mandateReference(),
                 mandate.debtorName(),
                 mandate.debtorIban(),
                 mandate.debtorBic(),
@@ -53,21 +52,19 @@ public class MandateRepository {
                 mandate.creditorIban(),
                 mandate.creditorBic(),
                 mandate.mandateType(),
-                Date.valueOf(mandate.signatureDate()),
+                mandate.signatureDate(),
                 mandate.status(),
-                Timestamp.from(mandate.createdAt()),
-                Timestamp.from(mandate.updatedAt())
+                mandate.createdAt(),
+                mandate.updatedAt()
         );
     }
 
-    /**
-     * Finds a mandate by its unique mandate ID.
-     */
     public Optional<SepaMandate> findById(String mandateId) {
 
         String sql = """
                 SELECT
                     MANDATE_ID,
+                    MANDATE_REFERENCE,
                     DEBTOR_NAME,
                     DEBTOR_IBAN,
                     DEBTOR_BIC,
@@ -84,90 +81,31 @@ public class MandateRepository {
                 WHERE MANDATE_ID = ?
                 """;
 
-        List<SepaMandate> mandates = jdbcTemplate.query(
+        return jdbcTemplate.query(
                 sql,
-                this::mapRow,
+                (rs, rowNum) -> mapRowToMandate(rs),
                 mandateId
-        );
-
-        return mandates.stream().findFirst();
+        ).stream().findFirst();
     }
 
-    /**
-     * Checks whether an active mandate already exists
-     * for the given debtor and creditor.
-     */
-    public boolean existsActiveMandate(
-            String debtorIban,
-            String creditorId) {
-
-        String sql = """
-                SELECT COUNT(*)
-                FROM MANDATE
-                WHERE DEBTOR_IBAN = ?
-                  AND CREDITOR_ID = ?
-                  AND STATUS = 'ACTIVE'
-                """;
-
-        Integer count = jdbcTemplate.queryForObject(
-                sql,
-                Integer.class,
-                debtorIban,
-                creditorId
-        );
-
-        return count != null && count > 0;
-    }
-
-    /**
-     * Updates the status of an existing mandate.
-     */
-    public int updateStatus(
-            String mandateId,
-            String status) {
-
-        String sql = """
-                UPDATE MANDATE
-                SET STATUS = ?,
-                    UPDATED_AT = CURRENT_TIMESTAMP
-                WHERE MANDATE_ID = ?
-                """;
-
-        return jdbcTemplate.update(
-                sql,
-                status,
-                mandateId
-        );
-    }
-
-    /**
-     * Maps one database row to the Mandate domain object.
-     */
-    private SepaMandate mapRow(
-            java.sql.ResultSet rs,
-            int rowNum) throws java.sql.SQLException {
+    private SepaMandate mapRowToMandate(ResultSet rs)
+            throws SQLException {
 
         return new SepaMandate(
                 rs.getString("MANDATE_ID"),
-
+                rs.getString("MANDATE_REFERENCE"),
                 rs.getString("DEBTOR_NAME"),
                 rs.getString("DEBTOR_IBAN"),
                 rs.getString("DEBTOR_BIC"),
-
                 rs.getString("CREDITOR_NAME"),
                 rs.getString("CREDITOR_ID"),
                 rs.getString("CREDITOR_IBAN"),
                 rs.getString("CREDITOR_BIC"),
-
                 rs.getString("MANDATE_TYPE"),
-
                 rs.getDate("SIGNATURE_DATE").toLocalDate(),
-
                 rs.getString("STATUS"),
-
                 rs.getTimestamp("CREATED_AT").toInstant(),
                 rs.getTimestamp("UPDATED_AT").toInstant()
         );
     }
 }
-

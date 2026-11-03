@@ -1,3 +1,4 @@
+
 package com.example.mandate.mapper;
 
 import com.example.mandate.domain.SepaMandate;
@@ -16,11 +17,13 @@ public class MandateMapper {
     public SepaMandate toDomain(
             CreateMandateRequest request,
             String mandateId,
+            String mandateReference,
             String status,
             Instant now) {
 
         return new SepaMandate(
                 mandateId,
+                mandateReference,
                 request.debtor().name(),
                 request.debtor().iban(),
                 request.debtor().bic(),
@@ -53,6 +56,7 @@ public class MandateMapper {
 
         return new MandateResponse(
                 mandate.mandateId(),
+                mandate.mandateReference(),
                 mandate.status(),
                 debtor,
                 creditor,

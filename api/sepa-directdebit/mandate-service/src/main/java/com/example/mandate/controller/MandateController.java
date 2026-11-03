@@ -40,10 +40,14 @@ public class MandateController {
     @PostMapping(value = "/submit")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MandateResponse> createMandate(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody CreateMandateRequest request) {
 
         MandateResponse response =
-                mandateService.createMandate(request);
+                mandateService.createMandate(
+                        request,
+                        idempotencyKey
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
