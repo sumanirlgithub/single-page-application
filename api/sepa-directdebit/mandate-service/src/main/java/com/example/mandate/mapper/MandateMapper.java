@@ -17,13 +17,13 @@ public class MandateMapper {
     public SepaMandate toDomain(
             CreateMandateRequest request,
             String mandateId,
-            String mandateReference,
+            String idUmr,
             String status,
             Instant now) {
 
         return new SepaMandate(
                 mandateId,
-                mandateReference,
+                idUmr,
                 request.debtor().name(),
                 request.debtor().iban(),
                 request.debtor().bic(),
@@ -56,7 +56,7 @@ public class MandateMapper {
 
         return new MandateResponse(
                 mandate.mandateId(),
-                mandate.mandateReference(),
+                mandate.idUmr(),
                 mandate.status(),
                 debtor,
                 creditor,

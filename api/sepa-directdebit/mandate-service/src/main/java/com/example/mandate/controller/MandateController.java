@@ -30,11 +30,11 @@ public class MandateController {
 
     private final MandateService mandateService;
 
-    @GetMapping("/{mandateId}")
+    @GetMapping("/{idUmr}")
     @PreAuthorize("hasRole('API') or hasRole('ADMIN')")
     public MandateResponse getMandate(
-            @PathVariable String mandateId) {
-        return mandateService.getMandate(mandateId);
+            @PathVariable String idUmr) {
+        return mandateService.getMandate(idUmr);
     }
 
     @PostMapping(value = "/submit")

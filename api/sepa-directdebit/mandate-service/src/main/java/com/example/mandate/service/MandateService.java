@@ -114,8 +114,8 @@ public class MandateService {
         // 6. Generate mandate identifiers.
         String mandateId = generateMandateId();
 
-        String mandateReference =
-                mandateReferenceGenerator.generate();
+        String idUmr = mandateReferenceGenerator.generate();
+
 
         // 7. Determine initial mandate status.
         // Change this according to your mandate activation policy.
@@ -127,7 +127,7 @@ public class MandateService {
         SepaMandate mandate = mandateMapper.toDomain(
                 normalisedRequest,
                 mandateId,
-                mandateReference,
+                idUmr,
                 status,
                 now
         );
@@ -160,12 +160,12 @@ public class MandateService {
      * Retrieves an existing mandate using its internal mandate ID.
      */
     @Transactional(readOnly = true)
-    public MandateResponse getMandate(String mandateId) {
+    public MandateResponse getMandate(String idUmr) {
 
-        SepaMandate mandate = mandateRepository.findById(mandateId)
+        SepaMandate mandate = mandateRepository.findByIdUmr(idUmr)
                 .orElseThrow(() ->
                         new MandateNotFoundException(
-                                "Mandate not found: " + mandateId
+                                "Mandate not found: " + idUmr
                         )
                 );
 

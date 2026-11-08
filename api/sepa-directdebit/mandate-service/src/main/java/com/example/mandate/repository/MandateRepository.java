@@ -43,7 +43,7 @@ public class MandateRepository {
         jdbcTemplate.update(
                 sql,
                 mandate.mandateId(),
-                mandate.mandateReference(),
+                mandate.idUmr(),
                 mandate.debtorName(),
                 mandate.debtorIban(),
                 mandate.debtorBic(),
@@ -59,7 +59,7 @@ public class MandateRepository {
         );
     }
 
-    public Optional<SepaMandate> findById(String mandateId) {
+    public Optional<SepaMandate> findByIdUmr(String idUmr) {
 
         String sql = """
                 SELECT
@@ -78,13 +78,13 @@ public class MandateRepository {
                     CREATED_AT,
                     UPDATED_AT
                 FROM MANDATE
-                WHERE MANDATE_ID = ?
+                WHERE MANDATE_REFERENCE = ?
                 """;
 
         return jdbcTemplate.query(
                 sql,
                 (rs, rowNum) -> mapRowToMandate(rs),
-                mandateId
+                idUmr
         ).stream().findFirst();
     }
 

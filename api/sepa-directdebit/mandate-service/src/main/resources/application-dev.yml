@@ -1,7 +1,7 @@
 # dev configuration for payments hub application
 server:
   #port: 8081
-  port: 8443
+  port: 8444
   ssl:
     key-store: ${MANDATE_TLS_KEYSTORE:./certs/mandate-service.p12}
     key-store-type: PKCS12
@@ -65,7 +65,7 @@ customer-service:
   password: password
 
 
-MANDATE_API_USER: payment-processor
+MANDATE_API_USER: mandate_api_user_suman
 MANDATE_API_USER_PASSWORD: password
 MANDATE_API_ADMIN: mandate_api_admin
 MANDATE_API_ADMIN_PASSWORD: password

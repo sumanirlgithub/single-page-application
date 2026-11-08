@@ -7,7 +7,7 @@ public record MandateResponse(
 
         String mandateId,
 
-        String mandateReference,
+        String idUmr,
 
         String status,
 

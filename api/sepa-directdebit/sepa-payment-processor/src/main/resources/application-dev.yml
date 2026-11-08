@@ -52,11 +52,11 @@ spring:
 
 
 mandate-service:
-  base-url: https://localhost:8443
+  base-url: https://localhost:8444
   username: ${MANDATE_API_USER}
   password: ${MANDATE_API_USER_PASSWORD}
 
-MANDATE_API_USER: payment-processor
+MANDATE_API_USER: mandate_api_user_suman
 MANDATE_API_USER_PASSWORD: password
 
 

@@ -10,9 +10,5 @@ public class MandateReferenceGenerator {
     public String generate() {
 
         // 33 characters, including the M prefix.
-        return "M" + UUID.randomUUID()
-                .toString()
-                .replace("-", "")
-                .toUpperCase();
-    }
+        return "UMR" + UUID.randomUUID().toString().replace("-", "");    }
 }

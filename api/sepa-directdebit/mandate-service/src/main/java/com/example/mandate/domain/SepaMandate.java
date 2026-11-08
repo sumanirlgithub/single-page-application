@@ -6,7 +6,7 @@ import java.time.LocalDate;
 public record SepaMandate(
 
         String mandateId,
-        String mandateReference,
+        String idUmr,
 // Debtor
         String debtorName,
         String debtorIban,
