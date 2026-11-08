@@ -1,0 +1,1 @@
+-Dspring.profiles.active=dev -Djavax.net.ssl.trustStore=C:/projects/git-repos-v1/single-page-application/api/payments-hub-parent/payments-hub-api/certs/mandate-truststore.p12 -Djavax.net.ssl.trustStorePassword=password -Djavax.net.ssl.trustStoreType=PKCS12

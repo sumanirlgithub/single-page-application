@@ -1,0 +1,124 @@
+# dev configuration for payments hub application
+server:
+  #port: 8081
+  port: 8443
+  ssl:
+    key-store: ${PAYMENTS_HUB_TLS_KEYSTORE:./certs/payments-hub-service.p12}
+    key-store-type: PKCS12
+    key-store-password: ${PAYMENTS_HUB_TLS_KEYSTORE_PASSWORD}
+    key-alias: payments-hub-service
+
+  servlet:
+    contextPath: /payments-hub-api
+  error:
+    include-message: always
+    include-binding-error: always
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: DEBUG
+
+spring:
+  application:
+    name: payments-hub-service
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.SecurityAutoConfiguration
+    config.activate.on-profile: dev
+  datasource:
+    url: jdbc:mysql://localhost:3306/sumandb
+    username: root
+    password: root
+    driverClassName: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: never
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    consumer:
+      group-id: bank-submission-group
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+        spring.json.trusted.packages: "com.neo.payments.hub.contract.submission"
+        spring.json.value.default.type: "com.neo.payments.hub.contract.submission.BankSubmissionRequestedEvent"
+        spring.json.use.type.headers: true
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 10
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+
+bank-submission:
+  api:
+    base-url: http://localhost:9099
+    submit-path: /api/v1/payment-submissions
+
+  kafka:
+    topic: BANK-SUBMISSION-REQUESTED
+
+  worker:
+    poll-interval: 5000
+    batch-size: 100
+
+  outbox:
+    poll-interval: 5000
+    batch-size: 100
+
+    outbox:
+      poll-interval: 5000
+      batch-size: 100
+
+    worker:
+      poll-interval: 5000
+      batch-size: 100
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+app:
+  security:
+    basic:
+      username: ${PAYMENTS_HUB_API_USER}
+      password: ${PAYMENTS_HUB_API_USER_PASSWORD}
+    admin:
+      username: ${PAYMENTS_HUB_API_ADMIN}
+      password: ${PAYMENTS_HUB_API_ADMIN_PASSWORD}
+
+sepa:
+  direct-debit:
+    scheme: CORE
+
+customer-service:
+  base-url: http://localhost:8083
+  username: test
+  password: password
+
+
+mandate-service:
+  base-url: https://localhost:8444
+  username: ${MANDATE_API_USER}
+  password: ${MANDATE_API_USER_PASSWORD}
+
+MANDATE_API_USER: mandate_api_user_suman
+MANDATE_API_USER_PASSWORD: password
+
+
+
+PAYMENTS_HUB_API_USER: payments_hub_api_user
+PAYMENTS_HUB_API_USER_PASSWORD: password
+PAYMENTS_HUB_API_ADMIN: payments_hub_api_admin
+PAYMENTS_HUB_API_ADMIN_PASSWORD: password
+
+PAYMENTS_HUB_TLS_KEYSTORE_PASSWORD: your-keystore-password

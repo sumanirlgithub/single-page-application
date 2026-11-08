@@ -1,0 +1,25 @@
+
+
+6. Important production considerations
+There are three things to understand before deploying this implementation.
+
+1. At-least-once delivery
+
+Suppose Kafka acknowledges a message, but your application crashes before updating MySQL to PUBLISHED.
+
+The next poll will publish the same event again.
+
+This is expected with the Outbox pattern. Your Kafka consumer must therefore be idempotent. Use outboxId as the event identifier and maintain submission state to prevent duplicate bank submissions.
+
+2. Multiple application instances
+
+The example above is suitable for a single publisher instance. If you deploy multiple instances, both could retrieve the same pending events.
+
+For production, implement an outbox claiming mechanism using MySQL SELECT ... FOR UPDATE SKIP LOCKED, with a short database transaction, before publishing. Alternatively, use a lease-based claim with an expiry time so abandoned records can be recovered.
+
+3. Bank submission retry is separate
+
+There are two independent retry mechanisms:
+- Outbox publisher retries Kafka publication.
+- Bank submission consumer retries bank/PSP communication.
+Do not mix these two responsibilities.
